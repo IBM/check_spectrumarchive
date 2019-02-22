@@ -1,5 +1,5 @@
-# check_spectrumarchive
-This script performs checks for different components of Spectrum Archive EE. The components that are checked are:
+# Introduction to check_spectrumarchive
+This script performs checks for different components of Spectrum Archive EE. The components that can be checked are:
 - status of the software
 - nodes
 - tape drives
@@ -7,13 +7,17 @@ This script performs checks for different components of Spectrum Archive EE. The
 - pools
 - task
 
-One component can be checked at a time using the appropriate command line option. 
+The script uses the Spectrum Archive EE admin command (eeadm) to get the details of a specified component in json format. The output of eeadm command is parsed and a decision is derived whether the state of the component is OK, WARNING or ERROR. The output is written to standard out in one line including the status of the components and the return code is in accordance with the detected status. For components that are not OK some further details are printed. 
 
-The script is based on Spectrum Archive EE version 1.3 and uses the eeamdmin command
+One component can be checked at a time using the appropriate command line option. The output of the check is written in one line including the 
+
+The script is based on Spectrum Archive EE version 1.3 and uses the eeamdmin command. It requires the jq tool to be installed on all Spectrum Archive EE nodes where this tool runs. 
 
 
 ## Installation
 Copy the script to each Spectrum Archive EE node that needs to be monitored. Make the script executable. 
+
+Optionally integrate the script with an external monitoring tool such as Icinga2. 
 
 
 ### Dependencies
@@ -39,3 +43,5 @@ This script can be invoked with one parameter at a time and performs the appropr
          -p<util>       --> Check pool utilization threshold to util
          -a<r|c>        --> Check for running or completed tasks
          -h             --> Print This Help Screen
+
+The script returns OK, WARNING or ERROR including the component and the appropriate return 0, 1 or 2 respectively. 
