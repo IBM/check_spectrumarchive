@@ -29,10 +29,11 @@
 # Author: 	Nils Haustein - haustein(at)de.ibm.com
 # Contributor:	Alexander Saupp - asaupp(at)gmail(dot)com
 # Contributor:	Achim Christ - achim(dot)christ(at)gmail(dot)com
-# Version:	1
+# Version:	1.1
 # Dependencies:	
 #   - IBM Spectrum Archive EE running on Spectrum Scale
 #   - jq: json parser (https://stedolan.github.io/jq/)
+# Repository: https://github.ibm.com/nils-haustein/check_spectrumarchive
 ################################################################################
 
 # This bash script checks various aspects of an IBM Spectrum Archive
@@ -55,10 +56,19 @@
 # guarantee that it doesn't seriously break things in your environment! If you
 # decide to run it, you do so on your own risk!
 
+
+################################################################################
+## change history
+################################################################################
+# 02/22/19 version 1.0 published on github
+# 01/03/19 version 1.1 if the command return code is 0 and $out is empty then give 
+#          a warning for nodes, drives, tapes and task checks
+# 
+
 ################################################################################
 ## Future topics
 ################################################################################
-# optinally use REST API
+# optionally use REST API
 # 
 # 
 
@@ -323,6 +333,14 @@ if [ $CHECK == "n" ] ; then
       fi
     done <<< "$(echo -e "$out")"
   else
+    if (( $rc == 0 )) ; then
+       msg="WARNING: no nodes detected. Run cluster configuration first."
+       exitrc=1
+    else 
+      msg="ERROR: node status not detected, Spectrum Archive is potentially down on this node"
+      exitrc=2
+    fi
+
     msg="ERROR: node status not detected, Spectrum Archive is potentially down on this node"
     exitrc=2
   fi
@@ -414,8 +432,13 @@ if [ $CHECK == "t" ] ; then
       fi
     done <<< "$(echo -e "$out")"
   else
-    msg="ERROR: tape status not detected, Spectrum Archive is potentially down on this node"
-    exitrc=2
+    if (( $rc == 0 )) ; then
+       msg="WARNING: no tapes detected. Tapes may not yet have been inserted."
+       exitrc=1
+    else 
+      msg="ERROR: tape status not detected, Spectrum Archive is potentially down on this node"
+      exitrc=2
+    fi
   fi
 
   if (( $exitrc == 0 )) ; then
@@ -491,8 +514,13 @@ if [ $CHECK == "d" ] ; then
       fi
     done <<< "$(echo -e "$out")"
   else
-    msg="ERROR: Drive status not detected, Spectrum Archive is potentially down on this node"
-    exitrc=2
+    if (( $rc == 0 )) ; then
+       msg="WARNING: no drives detected. Run configuration first."
+       exitrc=1
+    else 
+      msg="ERROR: drive status not detected, Spectrum Archive is potentially down on this node"
+      exitrc=2
+    fi
   fi
 
   if (( $exitrc == 0 )) ; then
@@ -587,8 +615,13 @@ if [ $CHECK == "p" ] ; then
       fi
     done <<< "$(echo -e "$out")"
   else
-    msg="ERROR: pool status not detected, Spectrum Archive is potentially down on this node"
-    exitrc=2
+    if (( $rc == 0 )) ; then
+       msg="WARNING: no pools detected"
+       exitrc=1
+    else 
+      msg="ERROR: tape status not detected, Spectrum Archive is potentially down on this node"
+      exitrc=2
+    fi
   fi
 
   if (( $exitrc == 0 )) ; then
@@ -690,8 +723,13 @@ if [ $CHECK == "a" ] ; then
     fi
     
   else
-    msg="ERROR: task status not detected, Spectrum Archive is potentially down on this node"
-    exit 2
+    if (( $rc == 0 )) ; then
+       echo "WARNING: no task detected."
+       exit 1
+    else
+      echo "ERROR: task status not detected, Spectrum Archive is potentially down on this node"
+      exit 2
+    fi
   fi
 
 fi
