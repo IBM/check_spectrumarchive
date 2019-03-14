@@ -29,7 +29,7 @@
 # Author: 	Nils Haustein - haustein(at)de.ibm.com
 # Contributor:	Alexander Saupp - asaupp(at)gmail(dot)com
 # Contributor:	Achim Christ - achim(dot)christ(at)gmail(dot)com
-# Version:	1.1
+# Version:	1.2
 # Dependencies:	
 #   - IBM Spectrum Archive EE running on Spectrum Scale
 #   - jq: json parser (https://stedolan.github.io/jq/)
@@ -62,12 +62,14 @@
 ################################################################################
 # 02/22/19 version 1.0 published on github
 # 01/03/19 version 1.1 if the command return code is 0 and $out is empty then give 
-#          a warning for nodes, drives, tapes and task checks
-# 
+#          a warning for nodes, drives, tapes and task checks instead of an error
+# 08/03/19 version 1.2 if mmm is not running check if the node is an active control
+#          node and if this is not the case then continue with the checks. 
 
 ################################################################################
 ## Future topics
 ################################################################################
+# 
 # optionally use REST API
 # 
 # 
@@ -85,7 +87,8 @@ EE_ADM_CMD="/opt/ibm/ltfsee/bin/eeadm"
 JQ_TOOL="/usr/local/bin/jq"
 
 # get hostname
-HOSTNAME=$( hostname | sed "s/\..*$//" )
+HOSTNAME=$(hostname | sed "s/\..*$//" )
+NODENAME=$(mmlsnode -N localhost | cut -d'.' -f1)
 
 # default threshold that throws a WARMING for pool low space
 DEFAULT_LOW_SPACE_THRESHOLD=10
@@ -228,6 +231,8 @@ fi
 ## Check IBM Spectrum Archive status
 ##
 ## checks if mmm is running
+## check if recalld is running
+## check if ltfs is mounted
 ################################################################################
 ## Sample output - this is what we're going to parse
 # ps -ef | grep mmm
@@ -237,31 +242,78 @@ fi
 if [ $CHECK == "s" ] ; then
   out=""
   msg=""
+  found=0
   exitrc=0
   out=$(ps -ef | grep "\/opt\/ibm\/ltfsee/bin\/mmm" | grep -v grep)
 
-  # first check if mmm is running
+  # first check if mmm is running, mmm is only running on the active control node
+  # if mmm is not running then check if the node is not an active node and if this is true continue
   if [ -z "$out" ] ; then
-    echo "ERROR: mmm is not running on node $HOSTNAME"
-    exit 2
-  fi
+    if (( $DEBUG == 0 )) ; then
+      out=$($EE_ADM_CMD node list --json |  $JQ_TOOL -r '.payload[] | [.id, .state, .hostname, .enabled, .control_node, .active_control_node] | @csv' 2>&1)
+      rc=$?
+    else
+      # used for degugging different states
+      out=$(cat ./node_test.json |  $JQ_TOOL -r '.payload[] | [.id, .state, .hostname, .enabled, .control_node, .active_control_node] | @csv' 2>&1)
+      rc=$?
+      # echo "DEBUG: $out"
+    fi
 
+    if [[ ! -z $out && $rc == 0 ]] ; then
+      while read line ; do
+        id=$(echo $line | cut -d',' -f1)						# node id
+        state1=$(echo $line | cut -d',' -f2 | cut -d'"' -f2)	# state
+        state2=$(echo $line | cut -d',' -f3 | cut -d'"' -f2)	# hostname
+        state3=$(echo $line | cut -d',' -f4)					# enabled ?
+        state4=$(echo $line | cut -d',' -f5)					# control node ?
+        state5=$(echo $line | cut -d',' -f6)					# active control node ?
+
+        if [[ $NODENAME == $state2 && $state5 == false ]] ; then
+          found=1
+          break
+        fi
+      done <<< "$(echo -e "$out")"
+      if (( $found == 0 )) ; then
+        msg="ERROR: mmm is not runing on node $NODENAME"
+        exitrc=2
+      fi
+    else
+      if (( $rc == 0 )) ; then
+         msg="WARNING: no nodes detected. Run cluster configuration first."
+         exitrc=1
+      else 
+        msg="ERROR: node status not detected, Spectrum Archive is potentially down on this node"
+        exitrc=2
+      fi
+    fi 
+  fi
+  
+  if (( $exitrc > 0 )) ; then
+    echo $msg
+    exit $exitrc
+  fi
+  
   # mmm might be running but recalld not
   out=$(ps -ef | grep "dsmrecalld" | grep -v grep)
+
   if [ -z "$out" ] ; then
-    echo "ERROR: Recall daemons are not running on node $HOSTNAME"
+    echo "ERROR: Recall daemons are not running on node $NODENAME"
     exit 2
   fi
 
   # check if /ltfs is mounted
   myarray=$(echo $(df | grep "\/" | awk '{print $6}' ))
   if ( ! in_array "/ltfs" "${myarray[*]}" ) ; then
-    echo "ERROR: backend LTFS file system (/ltfs) is not mounted on node $HOSTNAME"
+    echo "ERROR: backend LTFS file system (/ltfs) is not mounted on node $NODENAME"
     exit 2
   fi
   
-  # if we did not bail out before, all is good      
-  echo "OK: EE is started and running"
+  # if we did not bail out before, all is good
+  if (( $found == 0 )) ; then      
+     echo "OK: EE is started and running."
+  else 
+     echo "OK: EE is started and running on inactive control node"
+  fi    
   exit 0
 fi
 
