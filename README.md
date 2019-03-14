@@ -1,6 +1,6 @@
 # Introduction to check_spectrumarchive
 This script performs checks for different components of Spectrum Archive EE. The components that can be checked are:
-- status of the software
+- status of software
 - nodes
 - tape drives
 - tapes
