@@ -54,8 +54,7 @@ More information about jq: https://stedolan.github.io/jq/
 Icinga allows to monitor infrastructure and services. The Icinga architecture is client and server based. 
 
 
-The server is the Icinga server providing the graphical user interface and the option to configure monitored objects such as hostgroups, hosts and services. The hosts to be monitored are the Spectrum Archive nodes. The services are checked with the check_spectrumarchive.sh script. The Icinga server essentially calls the script on the remote Spectrum Archive nodes using NRPE.  
-More information about Icinga: https://Icinga.com/products/
+The server is the Icinga server providing the graphical user interface and the option to configure monitored objects such as hostgroups, hosts and services. The hosts to be monitored are the Spectrum Archive nodes. The services are checked with the check_spectrumarchive.sh script. The Icinga server essentially calls the script on the remote Spectrum Archive nodes using NRPE. More information about Icinga: https://Icinga.com/products/
 
 
 The client is the IBM Spectrum Archive nodes being monitored. The communication between the server and the client can be based on Nagios Remote Plugin Executor (NRPE). This requires to install and configure NRPE on the Spectrum Archive nodes. 
@@ -67,7 +66,10 @@ More information about NRPE: https://exchange.nagios.org/directory/Addons/Monito
 In order to monitor the Spectrum Archive nodes using NRPE the NRPE packages and optionally the nagios-plugins have to be installed and configured. These packages need to be installed on all Spectrum Archive to be monitored. 
 
 
-There are different ways to install NRPE and nagios plugins. Red Hat does not include these packages in the standard installation repository, but they can be downloaded from other sources (e.g. rpmfind). The following packages should be installed: NRPE, nagios-common, nagios-plugin
+There are different ways to install NRPE and nagios plugins. Red Hat does not include these packages in the standard installation repository, but they can be downloaded from other sources (e.g. rpmfind). The following packages should be installed: 
+
+	nrpe, nagios-common, nagios-plugin
+
 An alternative way for installing NRPE and nagios-plugins can be found here: https://support.nagios.com/kb/article.php?id=8
 
 
@@ -77,13 +79,17 @@ After the installation of NRPE has finished, notice some important path and conf
 
 
 Edit the NRPE configuration file (e.g /etc/nagios/NRPE.cfg) and set the include directory:
+
 	include_dir=/etc/NRPE.d/
 
 
 The check_spectrumarchive.sh script must be run with root privileges. NRPE however does not run as root but as a user that is defined in the NRPE.cfg file (NRPE_user, NRPE_group). The default user and group name is NRPE. Consequently sudo must be configured on the server to allow the NRPE-user to run the check_spectrumarchive.sh tool. To configure sudo, perform these steps:
 1. In the NRPE-configuration file (/etc/nagios/NRPE.cfg) set command prefix to sudo:
+
 	command_prefix=/usr/bin/sudo
+
 2. Add the NRPE-user to the sudoer configuration:
+
 	%NRPE          ALL=(ALL) NOPASSWD: /usr/local/bin/check_spectrumarchive.sh*,/usr/lib64/nagios/plugins/*
 
 
@@ -91,11 +97,14 @@ Now copy the executable script check_spectrumarchive.sh to /usr/local/bin
 
 
 Switch to the NRPE-user and test if the script works under the sudo context:
+
 	/usr/bin/sudo check_spectrumarchive.sh -s
+
 Note, if you are not able to switch to the NRPE-user you may have to specify a login shell for the user (temporarily). 
 
 
 Create the NRPE-configuration for the Spectrum Archive specific checks using this script. Note, the allowed_hosts must include the IP address of your Icinga server. Each check has a name given in [] which executes a particular command, such as /usr/local/bin/check_spectrumarchive.sh -s. Find an example below: 
+
 	allowed_hosts=127.0.0.1,9.155.114.101
 	command[check_users]=/usr/local/nagios/libexec/check_users -w 2 -c 5
 	command[check_ee_state]=/usr/local/bin/check_spectrumarchive.sh -s
@@ -108,6 +117,7 @@ Create the NRPE-configuration for the Spectrum Archive specific checks using thi
 
 
 Now start and enable the NRPE service and check the status:
+
 	# systemctl start NRPE
 	# systemctl enable NRPE
 	# systemctl status NRPE
@@ -121,18 +131,21 @@ Assume the Icinga server is installed an configured. The default configuration o
 
 
 First check that the Icinga server can communicate with the Spectrum Archive nodes using NRPE. For this purpose the check_NRPE plugin of the server can be used. The default location is: /usr/lib/nagios/plugins/check_NRPE. Find an example below:
+
 	/usr/lib/nagios/plugins/check_NRPE -H <IP of Spectrum Archive node>
 
 This command should return the NRPE version. If this is not the case investigate the problem. 
 
 
 Likewise you can execute a remote check:
+
 	/usr/lib/nagios/plugins/check_NRPE -H <IP of Spectrum Archive node> -c check_ee_state
 
 This command should also return an appropriate response
 
 
 If the NRPE communication and remote commands work then allow external commands by opening the Icinga configuration file (/etc/Icinga/Icinga.cfg) and adjust this setting:
+
 	check_external_commands=1
 
 
