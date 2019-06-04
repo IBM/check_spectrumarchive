@@ -115,7 +115,7 @@ Create the NRPE-configuration for the Spectrum Archive specific checks using thi
 	command[check_ee_rtasks]=/usr/local/bin/check_spectrumarchive.sh -a r
 	command[check_ee_ctasks]=/usr/local/bin/check_spectrumarchive.sh -a c
 
-Find an example of the NRPE configuration [config_files/nrpe_eenodes_local.cfg](config_files/nrpe_eenodes_local.cfg). 
+Find an example of the NRPE configuration [config_files/nrpe_eenode_local.cfg](config_files/nrpe_eenode_local.cfg). 
 
 
 Now start and enable the NRPE service and check the status:
