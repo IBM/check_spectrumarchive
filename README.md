@@ -86,11 +86,11 @@ Edit the NRPE configuration file (e.g /etc/nagios/NRPE.cfg) and set the include 
 The check_spectrumarchive.sh script must be run with root privileges. NRPE however does not run as root but as a user that is defined in the NRPE.cfg file (NRPE_user, NRPE_group). The default user and group name is NRPE. Consequently sudo must be configured on the server to allow the NRPE-user to run the check_spectrumarchive.sh tool. To configure sudo, perform these steps:
 1. In the NRPE-configuration file (/etc/nagios/NRPE.cfg) set command prefix to sudo:
 
-	command_prefix=/usr/bin/sudo
+		command_prefix=/usr/bin/sudo
 
 2. Add the NRPE-user to the sudoer configuration:
 
-	%NRPE          ALL=(ALL) NOPASSWD: /usr/local/bin/check_spectrumarchive.sh*,/usr/lib64/nagios/plugins/*
+		%NRPE          ALL=(ALL) NOPASSWD: /usr/local/bin/check_spectrumarchive.sh*,/usr/lib64/nagios/plugins/*
 
 
 Now copy the executable script check_spectrumarchive.sh to /usr/local/bin
