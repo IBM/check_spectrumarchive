@@ -29,7 +29,7 @@
 # Author: 	Nils Haustein - haustein(at)de.ibm.com
 # Contributor:	Alexander Saupp - asaupp(at)gmail(dot)com
 # Contributor:	Achim Christ - achim(dot)christ(at)gmail(dot)com
-# Version:	1.2
+# Version:	1.2.1
 # Dependencies:	
 #   - IBM Spectrum Archive EE running on Spectrum Scale
 #   - jq: json parser (https://stedolan.github.io/jq/)
@@ -65,6 +65,8 @@
 #          a warning for nodes, drives, tapes and task checks instead of an error
 # 08/03/19 version 1.2 if mmm is not running check if the node is an active control
 #          node and if this is not the case then continue with the checks. 
+# 06/03/19 version 1.2.1 add full path to mm commands
+#
 
 ################################################################################
 ## Future topics
@@ -88,7 +90,7 @@ JQ_TOOL="/usr/local/bin/jq"
 
 # get hostname
 HOSTNAME=$(hostname | sed "s/\..*$//" )
-NODENAME=$(mmlsnode -N localhost | cut -d'.' -f1)
+NODENAME=$(/usr/lpp/mmfs/bin/mmlsnode -N localhost | cut -d'.' -f1)
 
 # default threshold that throws a WARMING for pool low space
 DEFAULT_LOW_SPACE_THRESHOLD=10
