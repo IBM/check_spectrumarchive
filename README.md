@@ -236,7 +236,7 @@ In the example above we have used the old Icinga 1 syntax to define objects. Ici
 
 Logon to the Icinga server GUI and check your host groups, hosts and services. The following is an example of the host view that was created based on the example above:
 
-<img src="https://github.ibm.com/nils-haustein/check_spectrumarchiveimages/icinga_ee2.JPG" width="768" alt="Icinga Spectrum Archive Integration">
+<img src="https://github.ibm.com/nils-haustein/check_spectrumarchive/images/icinga_ee2.JPG" width="768" alt="Icinga Spectrum Archive Integration">
 
 
 Have run using it.
