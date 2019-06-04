@@ -1,4 +1,4 @@
-Find some configuration file examples in this folder
+Find some configuration file examples in this folder. These files cannot be used as is and have to be adjusted. Use on your own risk!
 
 ## File [nrpe_eenode_local.cfg](nrpe_eenode_local.cfg) - NRPE configuration for EE nodes
 
