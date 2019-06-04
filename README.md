@@ -234,6 +234,9 @@ Once the object definition has been done and store in default object location /e
 In the example above we have used the old Icinga 1 syntax to define objects. Icinga 2 comes with a new syntax with a similar semantic. More information about migrating from Icinga 1 syntax to Icinga 2 syntax: https://Icinga.com/docs/Icinga2/latest/doc/23-migrating-from-Icinga-1x/ 
 
 
-Logon to the Icinga server GUI and check your host groups, hosts and services. The following is an example, how this may look like: 
+Logon to the Icinga server GUI and check your host groups, hosts and services. The following is an example of the host view that was created based on the example above:
+
+<img src="https://github.ibm.com/nils-haustein/check_spectrumarchiveimages/icinga_ee2.JPG" width="768" alt="Icinga Spectrum Archive Integration">
 
 
+Have run using it.
