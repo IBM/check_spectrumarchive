@@ -22,21 +22,21 @@ This script can be invoked with one parameter at a time and performs the appropr
          -n             --> Verify node status
          -t             --> Verify tape states
          -d             --> Verify drive states
-         -p<util>       --> Check pool utilization threshold to util
-         -a<r|c>        --> Check for running or completed tasks
+         -p<util>       --> Check if tape pool utilization is above %util
+         -a<r|c>        --> Check if running or completed tasks have failed
          -h             --> Print This Help Screen
 
 The script returns OK, WARNING or ERROR including the component and the appropriate return 0, 1 or 2 respectively.
+
 Only one option can be specified at a time. The combination of multiple options in one call of the script does not work. 
 
-Only one option can be used at a time. Thus the combination of multiple options with one command executions is not possible. 
-
-The script can be used standalone or it can be intergrated with a external Icinga or nagios monitoring server. 
+The script can be used standalone or it can be integrated with a external Icinga or nagios monitoring server. 
 
 
 ## Installation
-Install the dependencies and 
-Transfer the script to each Spectrum Archive EE node that needs to be monitored. Make the script executable. 
+Clone the git and transfer the check_spectrumarchive.sh script to each Spectrum Archive EE node that needs to be monitored. Make the script executable. 
+
+Install the dependencies outline below. 
 
 The script can now be used from the command line. 
 
