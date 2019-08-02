@@ -29,7 +29,7 @@
 # Author: 	Nils Haustein - haustein(at)de.ibm.com
 # Contributor:	Alexander Saupp - asaupp(at)gmail(dot)com
 # Contributor:	Achim Christ - achim(dot)christ(at)gmail(dot)com
-# Version:	1.2.1
+# Version:	1.2.2
 # Dependencies:	
 #   - IBM Spectrum Archive EE running on Spectrum Scale
 #   - jq: json parser (https://stedolan.github.io/jq/)
@@ -66,6 +66,7 @@
 # 08/03/19 version 1.2 if mmm is not running check if the node is an active control
 #          node and if this is not the case then continue with the checks. 
 # 06/03/19 version 1.2.1 add full path to mm commands
+# 08/02/19 version 1.2.2 fix the absense of reclaim% in pool list output, added function div to for divisions with floating point numbers
 #
 
 ################################################################################
@@ -150,7 +151,6 @@ error_usage () {
 ##
 ## checks if an element ($1) is included in an array ($2) and returns 0 or 1
 ################################################################################
-# checks if an element ($1) is contained in an array ($2)
 function in_array {
   val=$1
   array=$2
@@ -163,6 +163,26 @@ function in_array {
     fi
   done
   return 1
+}
+
+################################################################################
+## Function: div
+##
+## divides two numbers and returns floating point result
+################################################################################
+function div ()  # Arguments: dividend and divisor
+{
+        if [ $2 -eq 0 ]; then echo division by 0; exit; fi
+        local p=12                            # precision
+        local c=${c:-0}                       # precision counter
+        local d=.                             # decimal separator
+        local r=$(($1/$2)); echo -n $r        # result of division
+        local m=$(($r*$2))
+        [ $c -eq 0 ] && [ $m -ne $1 ] && echo -n $d
+        [ $1 -eq $m ] || [ $c -eq $p ] && return
+        local e=$(($1-$m))
+        let c=c+1
+        div $(($e*10)) $2
 }
 
 
@@ -632,11 +652,17 @@ if [ $CHECK == "p" ] ; then
   exitrc=0
 
   if (( $DEBUG == 0 )) ; then
-    out=$($EE_ADM_CMD pool list --json |  $JQ_TOOL -r '.payload[] | [.name, .free_space, ."reclaimable%", .low_space_warning_threshold, .capacity] | @csv' 2>&1)
+    # out=$($EE_ADM_CMD pool list --json |  $JQ_TOOL -r '.payload[] | [.name, .free_space, ."reclaimable%", .low_space_warning_threshold, .capacity] | @csv' 2>&1)
+
+    # fix for absense of reclaim%
+    out=$($EE_ADM_CMD pool list --json |  $JQ_TOOL -r '.payload[] | [.name, .free_space, ."reclaimable_space", .low_space_warning_threshold, .capacity] | @csv' 2>&1)
     rc=$?
   else
-    # used for degugging different states
-    out=$(cat ./pool_test.json |  $JQ_TOOL -r '.payload[] | [.name, .free_space, ."reclaimable%", .low_space_warning_threshold, .capacity] | @csv' 2>&1)
+    # used for debugging
+    # out=$(cat ./pool_test.json |  $JQ_TOOL -r '.payload[] | [.name, .free_space, ."reclaimable%", .low_space_warning_threshold, .capacity] | @csv' 2>&1)
+
+    # fix for absense of reclaimable%
+    out=$(cat ./pool_test.json |  $JQ_TOOL -r '.payload[] | [.name, .free_space, ."reclaimable_space", .low_space_warning_threshold, .capacity] | @csv' 2>&1)
     rc=$?
   fi
 
@@ -652,17 +678,26 @@ if [ $CHECK == "p" ] ; then
         state3=$DEFAULT_LOW_SPACE_THRESHOLD
       fi
 
-      (( threshold = ($state4 * $state3)/100 ))
+      # check if free space is below the threshold
+      # (( threshold = ($state4 * $state3)/100 ))
+      (( r = $state4 * $state3 ))
+      threshold=$(div $r 100)
+      threshold=$( echo $threshold | cut -d'.' -f1 )
 
       if (( $state1 <= $threshold )) ; then
         msg="ERROR: Pool $id is full (free space = $state1, capacity = $state4); "$msg
         exitrc=2
       fi
     
-      # check if reclaimable space is <= reclamation threshold 
+      # check if reclaim percentage is >= reclamation threshold given with the command
+      # reclaim percentage = reclaimable space / capaity * 100)
+      # (( reclspace = (($state2/$state4)*100) ))
+      (( r = $state2 * 100 ))
+      reclspace=$(div $r $state4)
+      reclspace=$(echo $reclspace | cut -d'.' -f1)
     
-      if (( $state2 >= $parm1 )) ; then
-        msg=$msg"WARNING: Pool $id has reached reclamation threshold (reclaimable = $state2 %); "
+      if (( $reclspace >= $parm1 )) ; then
+        msg=$msg"WARNING: Pool $id has reached reclamation threshold (reclaimable = $reclspace %); "
         if (( $exitrc < 2 )) ; then
           exitrc=1
         fi
