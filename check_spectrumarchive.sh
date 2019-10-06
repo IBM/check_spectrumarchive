@@ -29,7 +29,7 @@
 # Author: 	Nils Haustein - haustein(at)de.ibm.com
 # Contributor:	Alexander Saupp - asaupp(at)gmail(dot)com
 # Contributor:	Achim Christ - achim(dot)christ(at)gmail(dot)com
-# Version:	1.2.2
+# Version:	1.2.3
 # Dependencies:	
 #   - IBM Spectrum Archive EE running on Spectrum Scale
 #   - jq: json parser (https://stedolan.github.io/jq/)
@@ -67,6 +67,7 @@
 #          node and if this is not the case then continue with the checks. 
 # 06/03/19 version 1.2.1 add full path to mm commands
 # 08/02/19 version 1.2.2 fix the absense of reclaim% in pool list output, added function div to for divisions with floating point numbers
+# 10/06/19 version 1.2.3 fix division by 0 when calculating reclspace 
 #
 
 ################################################################################
@@ -80,6 +81,9 @@
 ################################################################################
 ## Variable definition
 ################################################################################
+# define the version number
+ver=1.2.3
+
 # debug option: if this 1 then the json output is parsed from a file (e.g. ./node_test.json)
 DEBUG=0
 
@@ -122,7 +126,7 @@ DRIVE_GOOD_STATES=(in_use locked mounted mounting not_mounted unmounting)
 error_usage () {
   ERROR=$1
   HELP="\n
-   Check IBM Spectrum Archive EE status (MIT licence)\n
+   Check IBM Spectrum Archive EE status version $ver (MIT licence)\n
    \n
    usage: $0 [ -s | -n | -t | -d | -p<util> | -a<r|c> -h\n
    \n
@@ -169,10 +173,16 @@ function in_array {
 ## Function: div
 ##
 ## divides two numbers and returns floating point result
+##
+## Copyright by StackOverflow (captured from this thread:
+## https://stackoverflow.com/questions/12147040/division-in-script-and-floating-point/24431665
 ################################################################################
 function div ()  # Arguments: dividend and divisor
 {
-        if [ $2 -eq 0 ]; then echo division by 0; exit; fi
+        if [ $2 -eq 0 ]; then 				  # division by 0 returns 0
+		  echo 0 
+		  return 0
+		fi
         local p=12                            # precision
         local c=${c:-0}                       # precision counter
         local d=.                             # decimal separator
@@ -678,37 +688,44 @@ if [ $CHECK == "p" ] ; then
         state3=$DEFAULT_LOW_SPACE_THRESHOLD
       fi
 
-      # check if free space is below the threshold
-      # (( threshold = ($state4 * $state3)/100 ))
-      (( r = $state4 * $state3 ))
-      threshold=$(div $r 100)
-      threshold=$( echo $threshold | cut -d'.' -f1 )
 
-      if (( $state1 <= $threshold )) ; then
-        msg="ERROR: Pool $id is full (free space = $state1, capacity = $state4); "$msg
-        exitrc=2
-      fi
-    
-      # check if reclaim percentage is >= reclamation threshold given with the command
-      # reclaim percentage = reclaimable space / capaity * 100)
-      # (( reclspace = (($state2/$state4)*100) ))
-      (( r = $state2 * 100 ))
-      reclspace=$(div $r $state4)
-      reclspace=$(echo $reclspace | cut -d'.' -f1)
-    
-      if (( $reclspace >= $parm1 )) ; then
-        msg=$msg"WARNING: Pool $id has reached reclamation threshold (reclaimable = $reclspace %); "
-        if (( $exitrc < 2 )) ; then
-          exitrc=1
+      # if capacity is 0 then do not perform these calculations
+	  if (( $state4 == 0 )); then
+	    msg=$msg"WARNING: Pool $id has no tapes assigned (capacity=$state4); "
+		if (( $exitrc < 2 )); then
+		  exitrc=1
+		fi
+	  else
+        # check if free space is below the threshold
+        # (( threshold = ($state4 * $state3)/100 ))
+        (( r = $state4 * $state3 ))
+        threshold=$(div $r 100)
+        threshold=$( echo $threshold | cut -d'.' -f1 )
+        if (( $state1 <= $threshold )) ; then
+          msg="ERROR: Pool $id is full (free space = $state1, capacity = $state4); "$msg
+          exitrc=2
         fi
-      fi
+
+        # check if reclaim percentage is >= reclamation threshold given with the command
+        # reclaim percentage = reclaimable space / capaity * 100)
+        # (( reclspace = (($state2/$state4)*100) ))
+        (( r = $state2 * 100 ))
+        reclspace=$(div $r $state4)
+        reclspace=$(echo $reclspace | cut -d'.' -f1)
+        if (( $reclspace >= $parm1 )) ; then
+          msg=$msg"WARNING: Pool $id has reached reclamation threshold (reclaimable = $reclspace %); "
+          if (( $exitrc < 2 )) ; then
+            exitrc=1
+          fi
+        fi
+	  fi
     done <<< "$(echo -e "$out")"
   else
     if (( $rc == 0 )) ; then
        msg="WARNING: no pools detected"
        exitrc=1
     else 
-      msg="ERROR: tape status not detected, Spectrum Archive is potentially down on this node"
+      msg="ERROR: pool status not detected, Spectrum Archive is potentially down on this node"
       exitrc=2
     fi
   fi
