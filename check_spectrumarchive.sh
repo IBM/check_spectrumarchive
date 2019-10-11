@@ -94,7 +94,7 @@ EE_ADM_CMD="/opt/ibm/ltfsee/bin/eeadm"
 JQ_TOOL="/usr/local/bin/jq"
 
 # get hostname
-HOSTNAME=$(hostname | sed "s/\..*$//" )
+HOSTNAME=${HOSTNAME%%.*}
 NODENAME=$(/usr/lpp/mmfs/bin/mmlsnode -N localhost | cut -d'.' -f1)
 
 # default threshold that throws a WARMING for pool low space
@@ -276,7 +276,7 @@ if [ $CHECK == "s" ] ; then
   msg=""
   found=0
   exitrc=0
-  out=$(ps -ef | grep "\/opt\/ibm\/ltfsee/bin\/mmm" | grep -v grep)
+  out=$(pgrep /opt/ibm/ltfsee/bin/mmm)
 
   # first check if mmm is running, mmm is only running on the active control node
   # if mmm is not running then check if the node is not an active node and if this is true continue
@@ -326,7 +326,7 @@ if [ $CHECK == "s" ] ; then
   fi
   
   # mmm might be running but recalld not
-  out=$(ps -ef | grep "dsmrecalld" | grep -v grep)
+  out=$(pgrep dsmrecalld)
 
   if [ -z "$out" ] ; then
     echo "ERROR: Recall daemons are not running on node $NODENAME"
