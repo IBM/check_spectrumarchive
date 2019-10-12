@@ -224,7 +224,7 @@ if [ ! -f $EE_ADM_CMD ] ; then
 fi
 if [ ! -f $JQ_TOOL ] ; then
   echo "ERROR: utility jq not found, please download and install it in $JQ_TOOL (https://stedolan.github.io/jq/)"
-  $MMSYSMONC event custom ltfsee_warning "utility jq not found, please download and install it in $JQ_TOOL"
+  $MMSYSMONC event custom ltfsee_warning "Utility jq not found. Please download and install it in ${JQ_TOOL}."
   exit 1
 fi
 
@@ -354,7 +354,7 @@ if [ $CHECK == "s" ] ; then
   myarray=$(echo $(df | grep "\/" | awk '{print $6}' ))
   if ( ! in_array "/ltfs" "${myarray[*]}" ) ; then
     echo "ERROR: backend LTFS file system (/ltfs) is not mounted on node $NODENAME"
-    $MMSYSMONC event custom ltfsee_fs_error "Backend LTFS file system is not mounted on node ${NODENAME}"
+    $MMSYSMONC event custom ltfsee_fs_error "Backend LTFS file system is not mounted on node ${NODENAME}."
     exit 2
   fi
   
@@ -545,7 +545,7 @@ if [ $CHECK == "t" ] ; then
        exitrc=1
     else 
       msg="ERROR: tape status not detected, Spectrum Archive is potentially down on this node"
-      $MMSYSMONC event custom ltfsee_tape_error "Tape status not detected, Spectrum Archive is potentially down on this node."
+      $MMSYSMONC event custom ltfsee_tape_error "Tape status not detected. Spectrum Archive is potentially down on this node."
       exitrc=2
     fi
   fi
