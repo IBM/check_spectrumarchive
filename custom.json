@@ -1,0 +1,233 @@
+{
+  "ltfsee_info":{
+       "cause":"Check message",
+        "user_action":"N/A",
+        "scope":"NODE",
+        "entity_type":"NODE",
+        "code":"ltfs01",
+        "description":"General Spectrum Archive status",
+        "event_type":"INFO",
+        "message":"{0}",
+        "severity": "INFO"
+  },
+  "ltfsee_warning":{
+       "cause":"Check message",
+        "user_action":"N/A",
+        "scope":"NODE",
+        "entity_type":"NODE",
+        "code":"ltfs02",
+        "description":"General Spectrum Archive status",
+        "event_type":"INFO",
+        "message":"{0}",
+        "severity": "WARNING"
+  },
+  "ltfsee_error":{
+       "cause":"Check message",
+        "user_action":"N/A",
+        "scope":"NODE",
+        "entity_type":"NODE",
+        "code":"ltfs03",
+        "description":"General Spectrum Archive status",
+        "event_type":"INFO",
+        "message":"{0}",
+        "severity": "ERROR"
+  },
+  "ltfsee_drive_info":{
+       "cause":"Check message",
+        "user_action":"N/A",
+        "scope":"NODE",
+        "entity_type":"NODE",
+        "code":"ltfs04",
+        "description":"Spectrum Archive tape drive status",
+        "event_type":"INFO",
+        "message":"{0}",
+        "severity": "INFO"
+  },
+  "ltfsee_drive_warning":{
+       "cause":"Check message",
+        "user_action":"N/A",
+        "scope":"NODE",
+        "entity_type":"NODE",
+        "code":"ltfs05",
+        "description":"Spectrum Archive tape drive status",
+        "event_type":"INFO",
+        "message":"{0}",
+        "severity": "WARNING"
+  },
+  "ltfsee_drive_error":{
+       "cause":"Check message",
+        "user_action":"N/A",
+        "scope":"NODE",
+        "entity_type":"NODE",
+        "code":"ltfs06",
+        "description":"Spectrum Archive tape drive status",
+        "event_type":"INFO",
+        "message":"{0}",
+        "severity": "ERROR"
+  },
+  "ltfsee_task_info":{
+       "cause":"Check message",
+        "user_action":"N/A",
+        "scope":"NODE",
+        "entity_type":"NODE",
+        "code":"ltfs07",
+        "description":"Spectrum Archive task status",
+        "event_type":"INFO",
+        "message":"{0}",
+        "severity": "INFO"
+  },
+  "ltfsee_task_warning":{
+       "cause":"Check message",
+        "user_action":"N/A",
+        "scope":"NODE",
+        "entity_type":"NODE",
+        "code":"ltfs08",
+        "description":"Spectrum Archive task status",
+        "event_type":"INFO",
+        "message":"{0}",
+        "severity": "WARNING"
+  },
+  "ltfsee_task_error":{
+       "cause":"Check message",
+        "user_action":"N/A",
+        "scope":"NODE",
+        "entity_type":"NODE",
+        "code":"ltfs09",
+        "description":"Spectrum Archive task status",
+        "event_type":"INFO",
+        "message":"{0}",
+        "severity": "ERROR"
+  },
+  "ltfsee_tape_info":{
+       "cause":"Check message",
+        "user_action":"N/A",
+        "scope":"NODE",
+        "entity_type":"NODE",
+        "code":"ltfs10",
+        "description":"Spectrum Archive tape status",
+        "event_type":"INFO",
+        "message":"{0}",
+        "severity": "INFO"
+  },
+  "ltfsee_tape_warning":{
+       "cause":"Check message",
+        "user_action":"N/A",
+        "scope":"NODE",
+        "entity_type":"NODE",
+        "code":"ltfs11",
+        "description":"Spectrum Archive tape status",
+        "event_type":"INFO",
+        "message":"{0}",
+        "severity": "WARNING"
+  },
+  "ltfsee_tape_error":{
+       "cause":"Check message",
+        "user_action":"N/A",
+        "scope":"NODE",
+        "entity_type":"NODE",
+        "code":"ltfs12",
+        "description":"Spectrum Archive tape status",
+        "event_type":"INFO",
+        "message":"{0}",
+        "severity": "ERROR"
+  },
+  "ltfsee_proc_info":{
+       "cause":"Check message",
+        "user_action":"N/A",
+        "scope":"NODE",
+        "entity_type":"NODE",
+        "code":"ltfs13",
+        "description":"Spectrum Archive process status",
+        "event_type":"INFO",
+        "message":"{0}",
+        "severity": "INFO"
+  },
+  "ltfsee_proc_warning":{
+       "cause":"Check message",
+        "user_action":"N/A",
+        "scope":"NODE",
+        "entity_type":"NODE",
+        "code":"ltfs14",
+        "description":"Spectrum Archive process status",
+        "event_type":"INFO",
+        "message":"{0}",
+        "severity": "WARNING"
+  },
+  "ltfsee_proc_error":{
+       "cause":"Check message",
+        "user_action":"N/A",
+        "scope":"NODE",
+        "entity_type":"NODE",
+        "code":"ltfs15",
+        "description":"Spectrum Archive process status",
+        "event_type":"INFO",
+        "message":"{0}",
+        "severity": "ERROR"
+  },
+  "ltfsee_pool_info":{
+       "cause":"Check message",
+        "user_action":"N/A",
+        "scope":"NODE",
+        "entity_type":"NODE",
+        "code":"ltfs16",
+        "description":"Spectrum Archive pool status",
+        "event_type":"INFO",
+        "message":"{0}",
+        "severity": "INFO"
+  },
+  "ltfsee_pool_warning":{
+       "cause":"Check message",
+        "user_action":"N/A",
+        "scope":"NODE",
+        "entity_type":"NODE",
+        "code":"ltfs17",
+        "description":"Spectrum Archive pool status",
+        "event_type":"INFO",
+        "message":"{0}",
+        "severity": "WARNING"
+  },
+  "ltfsee_pool_error":{
+       "cause":"Check message",
+        "user_action":"N/A",
+        "scope":"NODE",
+        "entity_type":"NODE",
+        "code":"ltfs18",
+        "description":"Spectrum Archive pool status",
+        "event_type":"INFO",
+        "message":"{0}",
+        "severity": "ERROR"
+  },
+  "ltfsee_fs_info":{
+       "cause":"Check message",
+        "user_action":"N/A",
+        "scope":"NODE",
+        "entity_type":"NODE",
+        "code":"ltfs19",
+        "description":"Spectrum Archive /ltfs-fs status",
+        "event_type":"INFO",
+        "message":"{0}",
+        "severity": "INFO"
+  },
+  "ltfsee_fs_warning":{
+       "cause":"Check message",
+        "user_action":"N/A",
+        "scope":"NODE",
+        "entity_type":"NODE",
+        "code":"ltfs20",
+        "description":"Spectrum Archive /ltfs-fs status",
+        "event_type":"INFO",
+        "message":"{0}",
+        "severity": "WARNING"
+  },
+  "ltfsee_fs_error":{
+       "cause":"Check message",
+        "user_action":"N/A",
+        "scope":"NODE",
+        "entity_type":"NODE",
+        "code":"ltfs21",
+        "description":"Spectrum Archive /ltfs-fs status",
+        "event_type":"INFO",
+        "message":"{0}",
+        "severity": "ERROR"
+  }
+}
