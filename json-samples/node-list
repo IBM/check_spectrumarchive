@@ -1,0 +1,1 @@
+{"payload":[{"id":1,"ip":"9.155.113.43","hostname":"ltfsee-2","port":7600,"enabled":true,"num_of_drives":2,"library_id":"000001302300_LLC","library_name":"eelib2","nodegroup_id":"G0@000001302300_LLC","nodegroup_name":"G0","state":"available","control_node":true,"active_control_node":true }],"version":1} 

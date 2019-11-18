@@ -1,0 +1,224 @@
+#! /usr/bin/env python
+import json
+import pandas as pd
+import subprocess
+import argparse
+import sys
+
+
+
+# Construct the argument parser
+parser = argparse.ArgumentParser(description='Check Spectrum Archive status.')
+
+# Add the arguments to the parser
+
+#parser.add_argument("-c", "--checks",
+#	help='checks to perform, (default: %(default)s)', action="append", default=["t", "d", "p"], choices=["t", "d", "p", "n"])
+#print(args.checks)
+#parser.add_argument("--ieslot",
+#	help="check for cartridges in ieslot.",
+#	action="store_true")
+#parser.add_argument('--path', metavar='path', type=str, help='path to folder containing sample json outputs')
+parser.add_argument("-a", "--all",
+	help="check all states. FIXME",
+	action="store_true")
+parser.add_argument("-d", "--drive",
+	help="check drive states.",
+	action="store_true")
+parser.add_argument("-n", "--node",
+	help="check node states.",
+	action="store_true")
+parser.add_argument("-t", "--tape",
+	help="check tape states.",
+	action="store_true")
+parser.add_argument("-T", "--task",
+	help="check task states. FIXME",
+	action="store_true")
+parser.add_argument("-p", "--pool",
+	help="check pool states.",
+	action="store_true")
+parser.add_argument("--threshold",
+		help="pool low space threshold. (default: %(default)s)", 
+	default=10
+	)
+parser.add_argument("-e", "--events",
+	help="send events to mmhealth framework. FIXME",
+	action="store_true")
+parser.add_argument("-v", "--verbose",
+	help="increase output verbosity",
+	action="store_true")
+parser.add_argument("--dummy",
+	help="use sample json outputs, instead of live data from eeadm.",
+	action="store_true")
+
+args = parser.parse_args()
+
+
+# default threshold that throws a WARMING for pool low space
+DEFAULT_LOW_SPACE_THRESHOLD=int(args.threshold)
+
+# define node states
+NODE_WARNING_STATES={'down'}
+NODE_ERROR_STATES={'error'}
+NODE_GOOD_STATES={'available'}
+
+# define tape states
+TAPE_GOOD_STATES={'appendable','unassigned','full'}
+TAPE_WARNING_STATES={'append_fenced', 'data_full', 'exported', 'offline', 'recall_only', 'need_replace', 'require_replace', 'check_tape_library', 'require_validate', 'check_key_server'}
+TAPE_ERROR_STATES={'check_hba', 'inaccessible', 'non_supported', 'duplicated', 'missing', 'disconnected', 'unformatted', 'label_mismatch', 'need_unlock'}
+
+# define drive states
+DRIVE_WARNING_STATES={'disconnected', 'unassigned', 'not_installed'}
+DRIVE_ERROR_STATES={'error', 'standby'}
+DRIVE_GOOD_STATES={'in_use', 'locked', 'mounted', 'mounting', 'not_mounted', 'unmounting'}
+
+
+# Some colors for pretty output:
+class bcolors:
+    HEADER = '\033[95m'
+    OKBLUE = '\033[94m'
+    OKGREEN = '\033[92m'
+    WARNING = '\033[93m'
+    FAIL = '\033[91m'
+    ENDC = '\033[0m'
+    BOLD = '\033[1m'
+    UNDERLINE = '\033[4m'
+
+
+# Read in json data from file or command:
+def fetchdata(type):
+	if args.dummy:
+		json = subprocess.Popen("cat json-samples/" + type +"-list", shell=True, stdout=subprocess.PIPE).stdout.read()
+	else:
+		json = subprocess.Popen("eeadm " + type +" list --json", shell=True, stdout=subprocess.PIPE).stdout.read()
+
+	payload = pd.read_json(json)['payload']
+	return pd.read_json(payload.to_json(), orient='index')
+
+
+#############
+# Tape checks
+##############
+if args.tape:
+	tapes = fetchdata("tape")
+	df = pd.DataFrame(tapes, columns=['barcode', 'state', 'pool_name', 'library_name', 'location_type'])
+
+	ieslottapes = df.where(df['location_type'] == 'ieslot').dropna()
+	if len(ieslottapes):
+		print("======= " + str(len(ieslottapes)) + " tape(s) in ieslot")
+		if args.verbose: print(ieslottapes.to_string(index=False))
+
+	tgood = df.loc[df['state'].isin(TAPE_GOOD_STATES)]
+	if len(tgood):
+		print("======= " + str(len(tgood)) + " tape(s) in good state")
+
+	twarn = df.loc[df['state'].isin(TAPE_WARNING_STATES)]
+	if len(twarn):
+		print("======= " + str(len(twarn)) + " tape(s) in warning state")
+		if args.verbose: print(bcolors.WARNING + twarn.to_string(index=False) + bcolors.ENDC)
+
+	terror = df.loc[df['state'].isin(TAPE_ERROR_STATES)]
+	if len(terror):
+		print("======= " + str(len(terror)) + " tape(s) in error state")
+		if args.verbose: print(bcolors.FAIL + terror.to_string(index=False) + bcolors.ENDC)
+
+	tunknown = df.loc[~df['state'].isin(TAPE_WARNING_STATES|TAPE_ERROR_STATES|TAPE_GOOD_STATES)]
+	if len(tunknown):
+		print("======================================")
+		print("Unknown tape states:")
+		print(tunknown)
+		print("======================================")
+
+#############
+# Drive checks
+##############
+if args.drive:
+	drives = fetchdata("drive")
+	df = pd.DataFrame(drives, columns=['id', 'state', 'type', 'library_name', 'node_hostname'])
+
+	dgood = df.loc[df['state'].isin(DRIVE_GOOD_STATES)]
+	if len(dgood):
+		print("======= " + str(len(dgood)) + " drive(s) in good state")
+
+	dwarn = df.loc[df['state'].isin(DRIVE_WARNING_STATES)]
+	if len(dwarn):
+		print("======= " + str(len(dwarn)) + " drive(s) in warning state")
+		if args.verbose: print(bcolors.WARNING + dwarn.to_string(index=False) + bcolors.ENDC)
+
+	derror = df.loc[df['state'].isin(DRIVE_ERROR_STATES)]
+	if len(derror):
+		print("======= " + str(len(derror)) + " drives(s) in error state")
+		if args.verbose: print(bcolors.FAIL + derror.to_string(index=False) + bcolors.ENDC)
+		
+	dunknown = df.loc[~df['state'].isin(DRIVE_GOOD_STATES|DRIVE_ERROR_STATES|DRIVE_WARNING_STATES)]
+	if len(dunknown):
+		print("======================================")
+		print("Unknown drive states:")
+		print(dunknown)
+		print("======================================")
+
+#############
+# Node checks
+##############
+if args.node:
+	nodes = fetchdata("node")
+	df = pd.DataFrame(nodes, columns=['id', 'state', 'hostname', 'enabled', 'control_node', 'active_control_node'])
+
+	ngood = df.loc[df['state'].isin(NODE_GOOD_STATES)]
+	if len(ngood):
+		print("======= " + str(len(ngood)) + " node(s) in good state")
+
+	nwarn = df.loc[df['state'].isin(NODE_WARNING_STATES)]
+	if len(nwarn):
+		print("======= " + str(len(dwarn)) + " node(s) in warning state")
+		if args.verbose: print(bcolors.WARNING + nwarn.to_string(index=False) + bcolors.ENDC)
+
+	nerror = df.loc[df['state'].isin(NODE_ERROR_STATES)]
+	if len(nerror):
+		print("======= " + str(len(nerror)) + " node(s) in error state")
+		if args.verbose: print(bcolors.FAIL + nerror.to_string(index=False) + bcolors.ENDC)
+		
+	nunknown = df.loc[~df['state'].isin(NODE_GOOD_STATES|NODE_ERROR_STATES|NODE_WARNING_STATES)]
+	if len(nunknown):
+		print("======================================")
+		print("Unknown node state:")
+		print(nunknown)
+		print("======================================")
+
+#############
+# Pool checks
+##############
+if args.pool:
+	pools = fetchdata("pool")
+	df = pd.DataFrame(pools, columns=['name', 'free_space', 'reclaimable_space', 'low_space_warning_threshold', 'capacity'])
+
+	if len(df):
+		print("======= " + str(len(df)) + " pool(s)")
+
+	if args.verbose: print("================== Pool =================")
+	if args.verbose: print(df.to_string(index=False))
+
+	# Iterate over pools, checking free capacity:
+	for index, row in df.iterrows():
+		if row['capacity'] == 0:
+			print("Pool", row['name'], "has zero capacity. No tapes assigned?")
+			break
+
+		if row['low_space_warning_threshold'] == 0:
+			threshold = DEFAULT_LOW_SPACE_THRESHOLD
+		else:
+			threshold = row['low_space_warning_threshold']
+
+			print(row['name'], row['free_space'])
+
+		if row['free_space'] < row['capacity'] * threshold / 100:
+			print("Pool \"" + str(row['name']) + "\" free space below threshold. (" + str(row['free_space']/(1024*1024*1024*1024)) + " TB free)." )
+
+sys.exit()
+
+
+#./node_test.json |  $JQ_TOOL -r '.payload[] | [.id, .state, .hostname, .enabled, .control_node, .active_control_node] | @csv' 2>&1)
+#./tape_test.json |  $JQ_TOOL -r '.payload[] | [.barcode, .state, .pool_name, .library_name, .location_type] | @csv' 2>&1)
+#./drive_test.json | $JQ_TOOL -r '.payload[] | [.id, .state, .type, .library_name, .node_hostname] | @csv' )
+#./pool_test.json |  $JQ_TOOL -r '.payload[] | [.name, .free_space, ."reclaimable_space", .low_space_warning_threshold, .capacity] | @csv' 2>&1)
+#./task_test.json | $JQ_TOOL -r '.payload[] | [.task_id, .type, .status, .result] | @csv' 2>&1)
