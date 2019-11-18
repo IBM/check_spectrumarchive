@@ -122,6 +122,7 @@ if args.tape:
 		print("======= " + str(len(terror)) + " tape(s) in error state")
 		if args.verbose: print(bcolors.FAIL + terror.to_string(index=False) + bcolors.ENDC)
 
+	# Flag unknown status codes
 	tunknown = df.loc[~df['state'].isin(TAPE_WARNING_STATES|TAPE_ERROR_STATES|TAPE_GOOD_STATES)]
 	if len(tunknown):
 		print("======================================")
@@ -150,6 +151,7 @@ if args.drive:
 		print("======= " + str(len(derror)) + " drives(s) in error state")
 		if args.verbose: print(bcolors.FAIL + derror.to_string(index=False) + bcolors.ENDC)
 		
+	# Flag unknown status codes
 	dunknown = df.loc[~df['state'].isin(DRIVE_GOOD_STATES|DRIVE_ERROR_STATES|DRIVE_WARNING_STATES)]
 	if len(dunknown):
 		print("======================================")
@@ -178,6 +180,7 @@ if args.node:
 		print("======= " + str(len(nerror)) + " node(s) in error state")
 		if args.verbose: print(bcolors.FAIL + nerror.to_string(index=False) + bcolors.ENDC)
 		
+	# Flag unknown status codes
 	nunknown = df.loc[~df['state'].isin(NODE_GOOD_STATES|NODE_ERROR_STATES|NODE_WARNING_STATES)]
 	if len(nunknown):
 		print("======================================")
