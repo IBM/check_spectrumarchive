@@ -11,14 +11,6 @@ import sys
 parser = argparse.ArgumentParser(description='Check Spectrum Archive status.')
 
 # Add the arguments to the parser
-
-#parser.add_argument("-c", "--checks",
-#	help='checks to perform, (default: %(default)s)', action="append", default=["t", "d", "p"], choices=["t", "d", "p", "n"])
-#print(args.checks)
-#parser.add_argument("--ieslot",
-#	help="check for cartridges in ieslot.",
-#	action="store_true")
-#parser.add_argument('--path', metavar='path', type=str, help='path to folder containing sample json outputs')
 parser.add_argument("-a", "--all",
 	help="check all states. FIXME",
 	action="store_true")
