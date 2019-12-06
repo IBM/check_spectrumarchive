@@ -6,11 +6,11 @@ This utility performs status checks of IBM Spectrum Archive Enterprise Edition c
 - state of tapes
 - state of pools and pool utilization
 - state of running and completed task
-- all components.
+- all components together.
 
 The utility uses the Spectrum Archive EE admin command line interface (eeadm) to obtain the status of the components in json format. The output of eeadm command is parsed and a decision is derived whether the status of the component is in GOOD, WARNING or ERROR state. This utility writes the results to standard out in one line including the status of the components and the return code is in accordance with the detected status. For components that are not in GOOD state further details are displayed. 
 
-The utility is based on Spectrum Archive EE version 1.3. It requires the jq tool to be installed on all Spectrum Archive EE nodes where this tool runs. 
+The utility is based on Spectrum Archive EE version 1.3 and above. It requires the jq tool to be installed on all Spectrum Archive EE nodes where this tool runs. 
 
 The utility can be invoked to display the status of a single component or of all components. If all components are checked (option -e) then the utility can raise event notifications to the IBM Spectrum Scale event monitor. This requires the custom events to be configured. 
 
@@ -20,24 +20,24 @@ This utility can be invoked with one parameter at a time and performs the approp
 	usage: ./check_spectrumarchive.sh [ -s | -n | -t | -d | -p<util> | -a<r|c> -h ]
 	
 	Options:
-         -s             --> Verify IBM Spectrum Archive status
-         -n             --> Verify node status
-         -t             --> Verify tape states
-         -d             --> Verify drive states
-         -p<util>       --> Check if tape pool utilization is above %util
-         -a<r|c>        --> Check if running or completed tasks have failed
-		 -e 			--> Check all components and optionally send event notifications. 
-         -h             --> Print This Help Screen
+        -s			--> Verify IBM Spectrum Archive status
+        -n			--> Verify node status
+        -t			--> Verify tape states
+        -d			--> Verify drive states
+        -p<util>	--> Check if tape pool utilization is above %util
+        -a<r|c>		--> Check if running or completed tasks have failed
+		-e			--> Check all components and optionally send event notifications. 
+        -h			--> Print This Help Screen
 
-The utility returns OK, WARNING or ERROR including the component and the appropriate return 0, 1 or 2 respectively.
+The utility returns `OK`, `WARNING` or `ERROR` including the component and the appropriate return 0, 1 or 2 respectively.
 
-Only one option can be specified at a time. The combination of multiple options in one call of the utility does not work. However the option -e will check all components and send event notifications if the custom events have been configured. 
+Only one option can be specified at a time. The combination of multiple options in one call of the utility does not work. However the `option -e` will check all components and send event notifications if the custom events have been configured. 
 
 This utility can be used standalone or it can be integrated with a external Icinga or nagios monitoring server. 
 
 
 ## Installation
-Clone the git and transfer the check_spectrumarchive.sh utility to each Spectrum Archive EE node that needs to be monitored. Make the utility executable. 
+Clone the git and transfer the `check_spectrumarchive.sh` utility to each Spectrum Archive EE node that needs to be monitored. Make the utility executable. 
 
 Install the dependencies outline below. 
 
@@ -55,6 +55,7 @@ More information about jq: https://stedolan.github.io/jq/
 
 ## Integration option
 There are two option to integrate this utility:
+
 1. Integration with the IBM Spectrum Scale event monitoring framework
 2. Integration with Icing
 
@@ -66,17 +67,17 @@ This utility can be invoked to check all components (option -e) and send events 
 
 IBM Spectrum Scale includes a monitoring framework that allows to send custom events. Custom events can be surfaced by the IBM Spectrum Scale GUI and send as event notifications through SNMP or email. 
 
-To integrate this utility with the IBM Spectrum Scale event monitoring framework custom events need to be defined and configured. The file [custom.json](events/custom.json) included predefined custom events. The following events are pre-defined:
+To integrate this utility with the IBM Spectrum Scale event monitoring framework custom events need to be defined and configured. The file [custom.json](custom.json) included predefined custom events. The following events are pre-defined:
 
 | Event name | Event Code | Event description |
 |------------|------------|-------------------|
-| checkEE_imfo | 888341 | is send if all checks determined a good state |
+| checkEE_info | 888341 | is send if all checks determined a good state |
 | checkEE_warning | 888342 | is send if one or more component checks returned a WARNING state. Includes the component that has been checked and the WARNING message |
 | checkEE_error | 888343 | is send if one or more component checks returned a ERROR state. Includes the component that has been checked and the ERROR message |
 
 
 ## Configure custom events
-Before configuring the custom events check if a custom event file exists in /usr/lpp/mmfs/lib/mmsysmon/. If this is the case the [custom.json](events/custom.json) has to be added to the existing custom event file. Consider the json syntax.
+Before configuring the custom events check if a custom event file exists in /usr/lpp/mmfs/lib/mmsysmon/. If this is the case the [custom.json](custom.json) has to be added to the existing custom event file. Consider the json syntax.
 
 It is recommended to place the custom.json file in /var/mmfs/mmsysmon/ and create a symlink to this file under /usr/lpp/mmfs/lib/mmsysmon/ in order to prevent the custom.json file to be discarded after code upgrades. 
 
@@ -84,7 +85,7 @@ After the custom.json file has been installed, restart the monitoring framework:
 
 	# systemctl restart mmsysmon.service 
 
-After the [custom.json](events/custom.json) has been configured, test if the custom events have been picked up, using the command:
+After the [custom.json](custom.json) has been configured, test if the custom events have been picked up, using the command:
  
 	# mmhealth event show 888341
 
@@ -96,12 +97,13 @@ If the events are working then restart the Spectrum Scale GUI
 
 
 ## Check all components,
-This utility can check all IBM Spectrum Archive EE components using the option -e. If custom events have been configured then the utility will raise events for each WARNING and ERROR state. If no WARNING or ERROR state has been detected then this utility will send a single INFO event informing that the check has been performed and no issue has been found. 
+This utility can check all IBM Spectrum Archive EE components using the `option -e`. If custom events have been configured then the utility will raise events for each WARNING and ERROR state. If no WARNING or ERROR state has been detected then this utility will send a single INFO event informing that the check has been performed and no issue has been found. 
 
 To invoke the check of all components use the command: 
+
 	# ./check_spectrumarchive.sh -e
 
-The output if written to standard out. The return code of the utility correlates to the highest return code for each check. If event notificatios are enabled by installing the [custom.json](events/custom.json) then custom event are raised for checks resulting in WARNING and ERROR states.
+The output if written to standard out. The return code of the utility correlates to the highest return code for each check. If event notificatios are enabled by installing the [custom.json](custom.json) then custom event are raised for checks resulting in WARNING and ERROR states.
 
 Checking all componentes can be automated with the [IBM Spectrum Scale storage services automtation framework](https://github.com/nhaustein/SpectrumScaleAutomation). This framework can be configured to run the checks for all Spectrum Archive EE components periodically and raise events when appropriate. 
 
@@ -115,10 +117,12 @@ No trouble found:
 
 
 Warning message:
+
 	2019-12-02 06:27:36.207856 EST        checkee_warning           WARNING    Check check_pools determined Warnings, message: WARNING: Pool emtpypool has no tapes assigned (capacity=0);.
 
 
 Error messages:
+
 	2019-12-02 06:23:42.941351 EST        checkee_error             ERROR      Component check_status determined Errors, message: ERROR: EE is not running and node status not detected..
 
 If the Spectrum Scale GUI is installed and active the events raised by this utility when using option -e are propagated to the GUI event log. Event notifications can be configured to send events via email or SNMP. The component scope is NODE. 
@@ -132,7 +136,7 @@ The server is the Icinga server providing the graphical user interface and the o
 
 
 The client is the IBM Spectrum Archive nodes being monitored. The communication between the server and the client can be based on Nagios Remote Plugin Executor (NRPE). This requires to install and configure NRPE on the Spectrum Archive nodes. 
-More information about NRPE: https://exchange.nagios.org/directory/Addons/Monitoring-Agents/NRPE--2D-Nagios-Remote-Plugin-Executor/details
+[More information about NRPE](https://exchange.nagios.org/directory/Addons/Monitoring-Agents/NRPE--2D-Nagios-Remote-Plugin-Executor/details)
 
 
 
