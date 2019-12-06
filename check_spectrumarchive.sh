@@ -29,6 +29,7 @@
 # Author: 	Nils Haustein - haustein(at)de.ibm.com
 # Contributor:	Alexander Saupp - asaupp(at)gmail(dot)com
 # Contributor:	Achim Christ - achim(dot)christ(at)gmail(dot)com
+# Contributor:	Jan-Frode Myklebust - janfrode(at)tanso(dot)net
 # Version:	1.2.3
 # Dependencies:	
 #   - IBM Spectrum Archive EE running on Spectrum Scale
@@ -68,6 +69,7 @@
 # 06/03/19 version 1.2.1 add full path to mm commands
 # 08/02/19 version 1.2.2 fix the absense of reclaim% in pool list output, added function div to for divisions with floating point numbers
 # 10/06/19 version 1.2.3 fix division by 0 when calculating reclspace 
+# 10/12/19 version 1.3.0 add mmhealth eventlog integration
 #
 
 ################################################################################
@@ -82,7 +84,7 @@
 ## Variable definition
 ################################################################################
 # define the version number
-ver=1.2.3
+ver=1.3.0
 
 # debug option: if this 1 then the json output is parsed from a file (e.g. ./node_test.json)
 DEBUG=0
@@ -94,7 +96,7 @@ EE_ADM_CMD="/opt/ibm/ltfsee/bin/eeadm"
 JQ_TOOL="/usr/local/bin/jq"
 
 # get hostname
-HOSTNAME=$(hostname | sed "s/\..*$//" )
+HOSTNAME=${HOSTNAME%%.*}
 NODENAME=$(/usr/lpp/mmfs/bin/mmlsnode -N localhost | cut -d'.' -f1)
 
 # default threshold that throws a WARMING for pool low space
@@ -114,6 +116,15 @@ TAPE_GOOD_STATES=(appendable unassigned full)
 DRIVE_WARNING_STATES=(disconnected unassigned not_installed)
 DRIVE_ERROR_STATES=(error standby)
 DRIVE_GOOD_STATES=(in_use locked mounted mounting not_mounted unmounting)
+
+# Raise events with mmhealth, if custom events for Spectrum Archive is defined:
+if grep -s -q "Spectrum Archive status" /usr/lpp/mmfs/lib/mmsysmon/custom.json
+then
+    MMSYSMONC=/usr/lpp/mmfs/bin/mmsysmonc
+else
+    MMSYSMONC=:
+fi
+
 
 ################################################################################
 ## Functions
@@ -208,10 +219,12 @@ function div ()  # Arguments: dividend and divisor
 ################################################################################
 if [ ! -f $EE_ADM_CMD ] ; then
   echo "ERROR: No IBM Spectrum Archive Installation detected in $EE_PATH"
+  $MMSYSMONC event custom ltfsee_warning "No IBM Spectrum Archive Installation detected in $EE_PATH"
   exit 1
 fi
 if [ ! -f $JQ_TOOL ] ; then
   echo "ERROR: utility jq not found, please download and install it in $JQ_TOOL (https://stedolan.github.io/jq/)"
+  $MMSYSMONC event custom ltfsee_warning "Utility jq not found. Please download and install it in ${JQ_TOOL}."
   exit 1
 fi
 
@@ -276,7 +289,7 @@ if [ $CHECK == "s" ] ; then
   msg=""
   found=0
   exitrc=0
-  out=$(ps -ef | grep "\/opt\/ibm\/ltfsee/bin\/mmm" | grep -v grep)
+  out=$(pgrep /opt/ibm/ltfsee/bin/mmm)
 
   # first check if mmm is running, mmm is only running on the active control node
   # if mmm is not running then check if the node is not an active node and if this is true continue
@@ -307,14 +320,17 @@ if [ $CHECK == "s" ] ; then
       done <<< "$(echo -e "$out")"
       if (( $found == 0 )) ; then
         msg="ERROR: mmm is not runing on node $NODENAME"
+        $MMSYSMONC event custom ltfsee_proc_error "mmm is not runing on node ${NODENAME}."
         exitrc=2
       fi
     else
       if (( $rc == 0 )) ; then
          msg="WARNING: no nodes detected. Run cluster configuration first."
+        $MMSYSMONC event custom ltfsee_proc_warning "No nodes detected. Run cluster configuration first."
          exitrc=1
       else 
         msg="ERROR: node status not detected, Spectrum Archive is potentially down on this node"
+        $MMSYSMONC event custom ltfsee_proc_error "Spectrum Archive node status not detected."
         exitrc=2
       fi
     fi 
@@ -326,10 +342,11 @@ if [ $CHECK == "s" ] ; then
   fi
   
   # mmm might be running but recalld not
-  out=$(ps -ef | grep "dsmrecalld" | grep -v grep)
+  out=$(pgrep dsmrecalld)
 
   if [ -z "$out" ] ; then
     echo "ERROR: Recall daemons are not running on node $NODENAME"
+    $MMSYSMONC event custom ltfsee_proc_error "Recall daemons are not running on node ${NODENAME}."
     exit 2
   fi
 
@@ -337,14 +354,17 @@ if [ $CHECK == "s" ] ; then
   myarray=$(echo $(df | grep "\/" | awk '{print $6}' ))
   if ( ! in_array "/ltfs" "${myarray[*]}" ) ; then
     echo "ERROR: backend LTFS file system (/ltfs) is not mounted on node $NODENAME"
+    $MMSYSMONC event custom ltfsee_fs_error "Backend LTFS file system is not mounted on node ${NODENAME}."
     exit 2
   fi
   
   # if we did not bail out before, all is good
   if (( $found == 0 )) ; then      
      echo "OK: EE is started and running."
+     $MMSYSMONC event custom ltfsee_info "EE is started and running."
   else 
      echo "OK: EE is started and running on inactive control node"
+     $MMSYSMONC event custom ltfsee_info "EE is started and running on inactive control node."
   fi    
   exit 0
 fi
@@ -502,14 +522,17 @@ if [ $CHECK == "t" ] ; then
 
       if ( in_array $state1 "${TAPE_ERROR_STATES[*]}" ) ; then
         msg="ERROR: Tape $id is in state: $state1 (pool=$state2, library=$state3, location=$state4); "$msg
+        $MMSYSMONC event custom ltfsee_tape_error "Tape $id is in state: $state1 (pool=$state2 library=$state3 location=$state4)."
         exitrc=2
       elif ( in_array $state1 "${TAPE_WARNING_STATES[*]}" ) ; then
         msg=$msg"WARNING: Tape $id is in state: $state1 (pool=$state2, library=$state3, location=$state4); "
+        $MMSYSMONC event custom ltfsee_tape_warning "Tape $id is in state: $state1 (pool=$state2 library=$state3 location=$state4)."
         if (( $exitrc < 2 )) ; then
           exitrc=1
         fi
       elif ( ! in_array $state1 "${TAPE_GOOD_STATES[*]}" ) ; then
         msg=$msg"WARNING: Unknow tape state: $state1 detected for tape $id (pool=$state2, library=$state3, location=$state4); "
+        $MMSYSMONC event custom ltfsee_tape_warning "Unknow tape state: $state1 detected for tape $id (pool=$state2 library=$state3 location=$state4)."
         if (( $exitrc < 2 )) ; then
           exitrc=1
         fi
@@ -518,15 +541,18 @@ if [ $CHECK == "t" ] ; then
   else
     if (( $rc == 0 )) ; then
        msg="WARNING: no tapes detected. Tapes may not yet have been inserted."
+       $MMSYSMONC event custom ltfsee_tape_warning "No tapes detected. Tapes may not yet have been inserted."
        exitrc=1
     else 
       msg="ERROR: tape status not detected, Spectrum Archive is potentially down on this node"
+      $MMSYSMONC event custom ltfsee_tape_error "Tape status not detected. Spectrum Archive is potentially down on this node."
       exitrc=2
     fi
   fi
 
   if (( $exitrc == 0 )) ; then
     echo "OK: Tape state is GOOD"
+    $MMSYSMONC event custom ltfsee_tape_info "Tape state is GOOD."
     exit 0
   else
     echo "$msg"
@@ -584,14 +610,17 @@ if [ $CHECK == "d" ] ; then
 
       if ( in_array $state1 "${DRIVE_ERROR_STATES[*]}" ) ; then
         msg="ERROR: drive $id ($state2) is in state: $state1 (library=$state3, node=$state4); "$msg
+        $MMSYSMONC event custom ltfsee_drive_error "Drive $id ($state2) is in state: $state1 (library=$state3 node=$state4)."
         exitrc=2
       elif ( in_array $state1 "${DRIVE_WARNING_STATES[*]}" ) ; then
         msg=$msg"WARNING: drive $id ($state2) is in state: $state1 (library=$state3, node=$state4); "
+        $MMSYSMONC event custom ltfsee_drive_warning "Drive $id ($state2) is in state: $state1 (library=$state3 node=$state4)."
         if (( $exitrc < 2 )) ; then
           exitrc=1
         fi
       elif ( ! in_array $state1 "${DRIVE_GOOD_STATES[*]}" ) ; then
         msg=$msg"WARNING: Unknown state: $state1 detected for drive $id (type=$state2, library=$state3, node=$state4); "
+        $MMSYSMONC event custom ltfsee_drive_warning "Unknown state: $state1 detected for drive $id (type=$state2 library=$state3 node=$state4)."
         if (( $exitrc < 2 )) ; then
           exitrc=1
         fi
@@ -600,15 +629,18 @@ if [ $CHECK == "d" ] ; then
   else
     if (( $rc == 0 )) ; then
        msg="WARNING: no drives detected. Run configuration first."
+       $MMSYSMONC event custom ltfsee_drive_warning "No drives detected. Run configuration first."
        exitrc=1
     else 
       msg="ERROR: drive status not detected, Spectrum Archive is potentially down on this node"
+       $MMSYSMONC event custom ltfsee_drive_error "Drive status not detected. Spectrum Archive is potentially down on this node."
       exitrc=2
     fi
   fi
 
   if (( $exitrc == 0 )) ; then
     echo "OK: Drive state is GOOD"
+    $MMSYSMONC event custom ltfsee_drive_info "Drive state is GOOD."
     exit 0
   else
     echo "$msg"
@@ -692,6 +724,7 @@ if [ $CHECK == "p" ] ; then
       # if capacity is 0 then do not perform these calculations
 	  if (( $state4 == 0 )); then
 	    msg=$msg"WARNING: Pool $id has no tapes assigned (capacity=$state4); "
+        $MMSYSMONC event custom ltfsee_pool_warning "Pool $id has no tapes assigned (capacity=$state4)."
 		if (( $exitrc < 2 )); then
 		  exitrc=1
 		fi
@@ -703,6 +736,7 @@ if [ $CHECK == "p" ] ; then
         threshold=$( echo $threshold | cut -d'.' -f1 )
         if (( $state1 <= $threshold )) ; then
           msg="ERROR: Pool $id is full (free space = $state1, capacity = $state4); "$msg
+          $MMSYSMONC event custom ltfsee_pool_error "Pool $id is full (free space = $state1 capacity = $state4)."
           exitrc=2
         fi
 
@@ -714,6 +748,7 @@ if [ $CHECK == "p" ] ; then
         reclspace=$(echo $reclspace | cut -d'.' -f1)
         if (( $reclspace >= $parm1 )) ; then
           msg=$msg"WARNING: Pool $id has reached reclamation threshold (reclaimable = $reclspace %); "
+          $MMSYSMONC event custom ltfsee_pool_warning "Pool $id has reached reclamation threshold (reclaimable = $reclspace %)."
           if (( $exitrc < 2 )) ; then
             exitrc=1
           fi
@@ -723,15 +758,18 @@ if [ $CHECK == "p" ] ; then
   else
     if (( $rc == 0 )) ; then
        msg="WARNING: no pools detected"
+       $MMSYSMONC event custom ltfsee_pool_warning "No pools detected."
        exitrc=1
     else 
       msg="ERROR: pool status not detected, Spectrum Archive is potentially down on this node"
+      $MMSYSMONC event custom ltfsee_pool_error "Pool status not detected. Spectrum Archive is potentially down on this node."
       exitrc=2
     fi
   fi
 
   if (( $exitrc == 0 )) ; then
     echo "OK: Pool state is GOOD"
+    $MMSYSMONC event custom ltfsee_pool_info "Pool state is GOOD."
     exit 0
   else
     echo "$msg"
@@ -808,8 +846,10 @@ if [ $CHECK == "a" ] ; then
       if (( $exitrc == 0 )) ; then
         if [[ ! -z $msg ]] ; then
           echo "OK: $i active task: ($msg)"
+          $MMSYSMONC event custom ltfsee_task_info "$i active tasks."
         else
           echo "OK: no task running"
+          $MMSYSMONC event custom ltfsee_task_info "No task running."
         fi
         exit 0
       else
@@ -821,9 +861,11 @@ if [ $CHECK == "a" ] ; then
       i=$(echo "$out" | grep -E "failed|aborted" | wc -l)
       if (( $i > 0 )) ; then
         echo "WARNING: $i failed task(s), consider to clear the history (eeadm task clearhistory)"
+        $MMSYSMONC event custom ltfsee_task_warning "$i failed task(s). Consider to clear the history (eeadm task clearhistory)."
         exit 1
       else
-        echo "OK: No failed task(s)"
+        echo "OK: No failed tasks"
+        $MMSYSMONC event custom ltfsee_task_info "No failed tasks."
         exit 0
       fi
     fi
@@ -831,9 +873,11 @@ if [ $CHECK == "a" ] ; then
   else
     if (( $rc == 0 )) ; then
        echo "WARNING: no task detected."
+       $MMSYSMONC event custom ltfsee_task_warning "No tasks detected."
        exit 1
     else
       echo "ERROR: task status not detected, Spectrum Archive is potentially down on this node"
+      $MMSYSMONC event custom ltfsee_task_error "Task status not detected. Spectrum Archive is potentially down on this node."
       exit 2
     fi
   fi

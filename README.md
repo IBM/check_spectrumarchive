@@ -61,6 +61,20 @@ The client is the IBM Spectrum Archive nodes being monitored. The communication 
 More information about NRPE: https://exchange.nagios.org/directory/Addons/Monitoring-Agents/NRPE--2D-Nagios-Remote-Plugin-Executor/details
 
 
+## Integration with mmhealth eventlog
+
+To integrate with the Spectrum Scale GUI and mmhealth eventlog, install the custom events and restart monitoring and GUI services:
+
+~~~
+# cp custom.json /var/mmfs/mmsysmon/custom.json 
+# ln -s /var/mmfs/mmsysmon/custom.json /usr/lpp/mmfs/lib/mmsysmon/custom.json
+# mmsysmoncontrol restart
+# systemctl restart gpfsgui
+ 
+~~~
+
+Now all events will be sent to the eventlog, and can be checked from the gui, or ´´´mmhealth node eventlog```.
+
 
 ### Prepare the client (EE nodes)
 In order to monitor the Spectrum Archive nodes using NRPE the NRPE packages and optionally the nagios-plugins have to be installed and configured. These packages need to be installed on all Spectrum Archive to be monitored. 
