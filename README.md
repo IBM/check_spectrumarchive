@@ -24,12 +24,12 @@ This utility can be invoked with one parameter at a time and performs the approp
         -n			--> Verify node status
         -t			--> Verify tape states
         -d			--> Verify drive states
-        -p<util>	--> Check if tape pool utilization is above %util
-        -a<r|c>		--> Check if running or completed tasks have failed
-		-e			--> Check all components and optionally send event notifications. 
+        -p<util>		--> Check if tape pool utilization is above %util
+        -a<r|c>			--> Check if running or completed tasks have failed
+	-e			--> Check all components and optionally send event notifications. 
         -h			--> Print This Help Screen
 
-The utility returns `OK`, `WARNING` or `ERROR` including the component and the appropriate return 0, 1 or 2 respectively.
+The utility returns `OK`, `WARNING` or `ERROR` including the component and the appropriate return `0`, `1` or `2` respectively.
 
 Only one option can be specified at a time. The combination of multiple options in one call of the utility does not work. However the `option -e` will check all components and send event notifications if the custom events have been configured. 
 
@@ -71,9 +71,9 @@ To integrate this utility with the IBM Spectrum Scale event monitoring framework
 
 | Event name | Event Code | Event description |
 |------------|------------|-------------------|
-| checkEE_info | 888341 | is send if all checks determined a good state |
-| checkEE_warning | 888342 | is send if one or more component checks returned a WARNING state. Includes the component that has been checked and the WARNING message |
-| checkEE_error | 888343 | is send if one or more component checks returned a ERROR state. Includes the component that has been checked and the ERROR message |
+| checkee_info | 888341 | is send if all checks determined a good state |
+| checkee_warning | 888342 | is send if one or more component checks returned a WARNING state. Includes the component that has been checked and the WARNING message |
+| checkee_error | 888343 | is send if one or more component checks returned a ERROR state. Includes the component that has been checked and the ERROR message |
 
 
 ## Configure custom events
