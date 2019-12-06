@@ -8,7 +8,7 @@ This utility performs status checks of IBM Spectrum Archive Enterprise Edition c
 - state of running and completed task
 - all components together.
 
-The utility uses the Spectrum Archive EE admin command line interface (eeadm) to obtain the status of the components in json format. The output of eeadm command is parsed and a decision is derived whether the status of the component is in GOOD, WARNING or ERROR state. This utility writes the results to standard out in one line including the status of the components and the return code is in accordance with the detected status. For components that are not in GOOD state further details are displayed. 
+The utility uses the Spectrum Archive EE admin command line interface (eeadm) to obtain the status of the components in json format. The output of eeadm command is parsed and a decision is derived whether the status of the component is in `GOOD`, `WARNING` or `ERROR` state. This utility writes the results to standard out in one line including the status of the components and the return code is in accordance with the detected status. For components that are not in GOOD state further details are displayed. 
 
 The utility is based on Spectrum Archive EE version 1.3 and above. It requires the jq tool to be installed on all Spectrum Archive EE nodes where this tool runs. 
 
