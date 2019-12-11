@@ -26,15 +26,25 @@
 
 ################################################################################
 # Name:		Check IBM Spectrum Archive EE
+#
 # Author: 	Nils Haustein - haustein(at)de.ibm.com
+#
 # Contributor:	Alexander Saupp - asaupp(at)gmail(dot)com
 # Contributor:	Achim Christ - achim(dot)christ(at)gmail(dot)com
 # Contributor:	Jan-Frode Myklebust - janfrode(at)tanso(dot)net
-# Version:	1.3.1
+#
+# Version:	1.3.2
+#
 # Dependencies:	
 #   - IBM Spectrum Archive EE running on Spectrum Scale
 #   - jq: json parser (https://stedolan.github.io/jq/)
-# Repository: https://github.com/nhaustein/check_spectrumarchive
+#         EPEL:  https://centos.pkgs.org/7/epel-x86_64/jq-1.5-1.el7.x86_64.rpm.html
+#         ppc64: http://ftp.us2.freshrpms.net/linux/RPM/epel/7/ppc64/Packages/j/jq-devel-1.5-1.el7.ppc64.html
+#
+# Github Repository: 
+# https://github.com/nhaustein/check_spectrumarchive
+#
+#
 ################################################################################
 
 # This bash script checks various aspects of an IBM Spectrum Archive
@@ -72,7 +82,7 @@
 # 11/29/19 version 1.3 create functions for each check and add option (-e) to check all
 # 11/30/19 version 1.3 send sysmon events if the custom events exist for option -e
 # 12/06/19 version 1.3.1 merge with JF pull request
-#
+# 12/11/19 version 1.3.2 fix syntax checking to show syntax when parameter does not have - in front
 #
 ################################################################################
 ## Future topics
@@ -86,7 +96,7 @@
 ## Variable definition
 ################################################################################
 # define the version number
-ver=1.3.1
+ver=1.3.2
 
 # debug option: if this 1 then the json output is parsed from a file (e.g. ./node_test.json)
 DEBUG=0
@@ -164,10 +174,10 @@ error_usage () {
   if [ "$ERROR" == "" ]; then
     echo -e "\nYou'll probably execute this script via NRPE remotly"
   else
-    echo -e "$0 $*"
-    echo -e "\n$ERROR"
+    echo -e "$0 $* \n"
+#    echo -e "\n$ERROR"
   fi
-  exit 1
+  exit 2
 }
 
 ################################################################################
@@ -828,74 +838,74 @@ fi
 parm1=""
 msg=""
 finalrc=0
-while getopts 'sntdehp:a:' OPT; do
-  case $OPT in
-    s)  check_status
-	    finalrc=$?;;
-    n)  check_nodes
-	    finalrc=$?;;
-    t)  check_tapes
-	    finalrc=$?;;
-    d)  check_drives
-	    finalrc=$?;;
-    p)  parm1=$OPTARG
-	    if [[ -z $parm1 ]];
-		then
-		  error_usage "Pool utilization threshold not specified"
-		else
-		  check_pools
-  	      finalrc=$?
-		fi;;
-    a)  parm1=$OPTARG
-	    if [[ -z $parm1 ]];
-		then
-		  error_usage "Task type not specified (-r=running or -c=completed)"
-		elif [[ $parm1 == "r" || $parm1 == "c" ]];
-		then
-		  check_tasks
-  	      finalrc=$?
-		else
-		  error_usage "Wrong task type ($parm1), must be -r for running or -c for completed tasks"
-		fi;;
-    e) # all components are checked
-        echo "$(date): check_spectrumarchive.sh version $ver started on node $HOSTNAME"
-		echo "------------------------------------------------------------------------------------------------"
-		check_events
-		for func in check_status check_nodes check_tapes check_drives check_pools check_tasks-r check_tasks-c; 
-		do
-		  if [[ "$func" == "check_pools" ]];
-		  then
-		    parm1=80
-		  elif [[ "$func" == "check_tasks-r" ]];
-		  then
-		    parm1="r"
-		    func="check_tasks"
-		  elif [[ "$func" == "check_tasks-c" ]];
-		  then
-		     parm1="c"
-			 func="check_tasks"
-		  fi
-		  $func
-		  tmprc=$?
-		  if (( $tmprc > $finalrc )); then finalrc=$tmprc; fi
-		  if [[ -z $cmsg ]]; then cmsg=$msg; else cmsg=$cmsg"\n"$msg; fi
-		  # now send event if enabled
-		  if (( $eventEnabled == 1 ));
-		  then
-		    if (( $tmprc == 1 )); 
-            then
-               mmsysmonc event custom $eventWarn $func,"$msg"
-            elif (( $tmprc == 2 ));
-            then			
-               mmsysmonc event custom $eventErr $func,"$msg"
-            fi
-          fi			
-        done
-		msg=$cmsg;;
-    h)  error_usage;;
-    *)  error_usage "Unknown parameter \"$1\"";;
-  esac
-done
+opt=$1
+
+case "$opt" in
+"-s")  check_status
+    finalrc=$?;;
+"-n")  check_nodes
+    finalrc=$?;;
+"-t")  check_tapes
+    finalrc=$?;;
+"-d")  check_drives
+    finalrc=$?;;
+"-p")  parm1=$2
+    if [[ -z $parm1 ]];
+	then
+	  error_usage "Pool utilization threshold not specified"
+	else
+	  check_pools
+      finalrc=$?
+	fi;;
+"-a")  parm1=$2
+	if [[ -z $parm1 ]];
+	then
+	  error_usage "Task type not specified (-r=running or -c=completed)"
+	elif [[ $parm1 == "r" || $parm1 == "c" ]];
+	then
+	  check_tasks
+  	  finalrc=$?
+	else
+	  error_usage "Wrong task type ($parm1), must be -r for running or -c for completed tasks"
+	fi;;
+"-e") # all components are checked
+    echo "$(date): check_spectrumarchive.sh version $ver started on node $HOSTNAME"
+    echo "------------------------------------------------------------------------------------------------"
+	check_events
+	for func in check_status check_nodes check_tapes check_drives check_pools check_tasks-r check_tasks-c; 
+	do
+	  if [[ "$func" == "check_pools" ]];
+	  then
+	    parm1=80
+	  elif [[ "$func" == "check_tasks-r" ]];
+	  then
+	    parm1="r"
+	    func="check_tasks"
+	  elif [[ "$func" == "check_tasks-c" ]];
+	  then
+	     parm1="c"
+		 func="check_tasks"
+	  fi
+	  $func
+	  tmprc=$?
+	  if (( $tmprc > $finalrc )); then finalrc=$tmprc; fi
+	  if [[ -z $cmsg ]]; then cmsg=$msg; else cmsg=$cmsg"\n"$msg; fi
+	  # now send event if enabled
+	  if (( $eventEnabled == 1 ));
+	  then
+	    if (( $tmprc == 1 )); 
+        then
+          mmsysmonc event custom $eventWarn $func,"$msg"
+        elif (( $tmprc == 2 ));
+        then			
+          mmsysmonc event custom $eventErr $func,"$msg"
+        fi
+      fi		
+    done
+	msg=$cmsg;;
+"-h")  error_usage;;
+*)  error_usage "Unknown parameter \"$1\"";;
+esac
 
 # print the message
 echo -e "$msg"
@@ -903,7 +913,7 @@ echo -e "$msg"
 # echo "DEBUG: opt="$1", eventEnabled=$eventEnabled, finalrc=$finalrc"
 if [[ $1 == "-e" && $eventEnabled == "1" && $finalrc == "0" ]];
 then
-  mmsysmonc event custom $eventGood "all EE components","No problem found"
+  mmsysmonc event custom $eventGood "check_all EE components","No problem found"
 fi
 exit $finalrc
 
