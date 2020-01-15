@@ -33,7 +33,7 @@
 # Contributor:	Achim Christ - achim(dot)christ(at)gmail(dot)com
 # Contributor:	Jan-Frode Myklebust - janfrode(at)tanso(dot)net
 #
-# Version:	1.3.2
+# Version:	1.3.3
 #
 # Dependencies:	
 #   - IBM Spectrum Archive EE running on Spectrum Scale
@@ -83,7 +83,7 @@
 # 11/30/19 version 1.3 send sysmon events if the custom events exist for option -e
 # 12/06/19 version 1.3.1 merge with JF pull request
 # 12/11/19 version 1.3.2 fix syntax checking to show syntax when parameter does not have - in front
-#
+# 01/15/20 version 1.3.3 fix check_task, version earlier than 1.3.0.6 did not support json output for active task, version 1.3.0.6 supports json output for running task. Do not use json output for tasks, just grep
 ################################################################################
 ## Future topics
 ################################################################################
@@ -96,7 +96,7 @@
 ## Variable definition
 ################################################################################
 # define the version number
-ver=1.3.2
+ver=1.3.3
 
 # debug option: if this 1 then the json output is parsed from a file (e.g. ./node_test.json)
 DEBUG=0
@@ -717,6 +717,13 @@ function check_pools
 ##
 ## Check for running tasks (r)
 ## Check for failed completed task (c)
+##
+## Input: parm1 
+##        r - show running task
+##	      c - show completed task
+##
+## Note, do not use json output because EE version < 1.3.0.6 did not support 
+## json output for eeadm task list, it displayed the json output for -c
 ################################################################################
 ## Sample output - this is what we're going to parse
 # eeadm task list --json
@@ -748,56 +755,49 @@ function check_tasks
 {
   msg=""
   out=""
-  id=""
-  state1=""
-  state2=""
-  exitrc=0
   i=0
-
+  # depending on parm1 set the task type (tt) to be used with the eeadm task list command
+  if [[ "$parm1" == "r" ]]; then 
+    tt=""
+  elif [[ "$parm1" == "c" ]]; then
+    tt="-c"
+  else
+     msg="WARNING: task type not valid or specified (value=$parm1). Internal program error."
+	 return 1
+  fi
+  
   if (( $DEBUG == 0 )) ; then
-    out=$($EE_ADM_CMD task list --json | $JQ_TOOL -r '.payload[] | [.task_id, .type, .status, .result] | @csv' 2>&1)
+    # do not generate and parse json because some lower levels of code do not support this for running task
+    # out=$($EE_ADM_CMD task list --json | $JQ_TOOL -r '.payload[] | [.task_id, .type, .status, .result] | @csv' 2>&1)
+    # instead just capture the output and grep later
+	out=$($EE_ADM_CMD task list $tt)
     rc=$?
   else
     # used for degugging different states
-    out=$(cat ./task_test.json | $JQ_TOOL -r '.payload[] | [.task_id, .type, .status, .result] | @csv' 2>&1)
+    # out=$(cat ./task_test.json | $JQ_TOOL -r '.payload[] | [.task_id, .type, .status, .result] | @csv' 2>&1)
+	out=$(cat ./task_test)
     rc=$?
   fi
 
   if [[ ! -z $out && $rc == 0 ]] ; then
     if [[ $parm1 == "r" ]]; then
-      while read line ; do
-        id=$(echo $line | cut -d',' -f1)						# task ID
-        state1=$(echo $line | cut -d',' -f2 | cut -d'"' -f2)	# task type
-        state2=$(echo $line | cut -d',' -f3 | cut -d'"' -f2)	# status
-        
-        if [[ $state2 == "running" || $state2 == "waiting" ]] ; then
-          msg=$msg"$state1 task (ID $id) is in state: $state2; "
-          (( i = i + 1 ))
-        fi
-      done <<< "$(echo -e "$out")"
-
-      if (( $exitrc == 0 )) ; then
-        if [[ ! -z $msg ]] ; then
-          msg="OK: $i active task: ($msg)"
-        else
-          msg="OK: no task running"
-        fi
-        return 0
-      else
-        return $exitrc
-      fi
-
-    elif [[ $parm1 == "c" ]] ; then
+      i=$(echo "$out" | grep -E "running|waiting" | wc -l)
+      if (( i > 0 )); then
+	    msg="OK: $i active task."
+	  else 
+	    msg="OK: no task running"
+	  fi
+	  return 0
+	elif [[ $parm1 == "c" ]]; then
       i=$(echo "$out" | grep -E "failed|aborted" | wc -l)
-      if (( $i > 0 )) ; then
-        msg="WARNING: $i failed task(s). Consider to clear the history (eeadm task clearhistory)"
-        return 1
-      else
-        msg="OK: No failed task(s)"
-        return 0
-      fi
-    fi
-    
+      if (( i > 0 )); then
+	    msg="WARNING: $i failed or aborted task(s). Consider to clear the history (eeadm task clearhistory)"
+		return 1
+	  else 
+	    msg="OK: No failed or aborted task(s)"
+		return 0
+	  fi
+	fi 
   else
     msg="ERROR: task status not detected. EE may be down or no task have been run."
     return 2
