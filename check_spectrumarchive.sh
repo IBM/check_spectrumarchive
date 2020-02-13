@@ -33,7 +33,7 @@
 # Contributor:	Achim Christ - achim(dot)christ(at)gmail(dot)com
 # Contributor:	Jan-Frode Myklebust - janfrode(at)tanso(dot)net
 #
-# Version:	1.3.3
+# Version:	1.3.4
 #
 # Dependencies:	
 #   - IBM Spectrum Archive EE running on Spectrum Scale
@@ -84,6 +84,7 @@
 # 12/06/19 version 1.3.1 merge with JF pull request
 # 12/11/19 version 1.3.2 fix syntax checking to show syntax when parameter does not have - in front
 # 01/15/20 version 1.3.3 fix check_task, version earlier than 1.3.0.6 did not support json output for active task, version 1.3.0.6 supports json output for running task. Do not use json output for tasks, just grep
+# 02/12/20 version 1.3.4 fix bogus error message mmm is not running - keep the full NODENAME
 ################################################################################
 ## Future topics
 ################################################################################
@@ -96,7 +97,7 @@
 ## Variable definition
 ################################################################################
 # define the version number
-ver=1.3.3
+ver=1.3.4
 
 # debug option: if this 1 then the json output is parsed from a file (e.g. ./node_test.json)
 DEBUG=0
@@ -121,7 +122,8 @@ JQ_TOOL="/usr/local/bin/jq"
 
 # get hostname
 HOSTNAME=$(hostname | sed "s/\..*$//" )
-NODENAME=$(/usr/lpp/mmfs/bin/mmlsnode -N localhost | cut -d'.' -f1)
+# fix 1.3.4 keep the full node name without cutting of .
+NODENAME=$(/usr/lpp/mmfs/bin/mmlsnode -N localhost)
 
 # default threshold that throws a WARMING for pool low space
 DEFAULT_LOW_SPACE_THRESHOLD=10
