@@ -14,6 +14,11 @@ The utility is based on Spectrum Archive EE version 1.3 and above. It requires t
 
 The utility can be invoked to display the status of a single component or of all components. If all components are checked (option -e) then the utility can raise event notifications to the IBM Spectrum Scale event monitor. This requires the custom events to be configured. 
 
+
+## Disclaimer and license
+This project is under [MIT license](LICENSE).
+
+
 ## Syntax
 This utility can be invoked with one parameter at a time and performs the appropriate checks. 
 
