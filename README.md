@@ -31,7 +31,7 @@ This utility can be invoked with one parameter at a time and performs the approp
         -d			--> Verify drive states
         -p<util>		--> Check if tape pool utilization is above %util
         -a<r|c>			--> Check if running or completed tasks have failed
-	-e			--> Check all components and optionally send event notifications. 
+	    -e			--> Check all components and optionally send event notifications. 
         -h			--> Print This Help Screen
 
 The utility returns `OK`, `WARNING` or `ERROR` including the component and the appropriate return `0`, `1` or `2` respectively.
