@@ -33,7 +33,7 @@
 # Contributor:	Achim Christ - achim(dot)christ(at)gmail(dot)com
 # Contributor:	Jan-Frode Myklebust - janfrode(at)tanso(dot)net
 #
-# Version:	1.3.4
+# Version:	1.3.5
 #
 # Dependencies:	
 #   - IBM Spectrum Archive EE running on Spectrum Scale
@@ -85,10 +85,13 @@
 # 12/11/19 version 1.3.2 fix syntax checking to show syntax when parameter does not have - in front
 # 01/15/20 version 1.3.3 fix check_task, version earlier than 1.3.0.6 did not support json output for active task, version 1.3.0.6 supports json output for running task. Do not use json output for tasks, just grep
 # 02/12/20 version 1.3.4 fix bogus error message mmm is not running - keep the full NODENAME
+# 03/05/20 version 1.3.5 correct echo syntax error, use complete path for mmsysmonc ($SYSMON_CMD)
+# 03/13/20 version 1.3.5 change event code and labels for GUI events (upper case labels won't work)
+# 03/13/20 version 1.3.5 check status for tape and drive instead of states
 ################################################################################
 ## Future topics
 ################################################################################
-# 
+#
 # optionally use REST API
 # 
 # 
@@ -97,22 +100,25 @@
 ## Variable definition
 ################################################################################
 # define the version number
-ver=1.3.4
+ver=1.3.5
 
 # debug option: if this 1 then the json output is parsed from a file (e.g. ./node_test.json)
 DEBUG=0
 
 # define the custom event IDs as they are defined in the custom.json example
 # if the event IDs are changed in the custom.json, it must be adjusted here. 
-eventGood=888341
-eventWarn=888342
-eventErr=888343
+eventGood=ee_001
+eventWarn=ee_002
+eventErr=ee_003
 
 # eventEnable is 0 (false) and events are not send for single component checks by default
 eventEnabled=0
 
 # path to the custom.json file in Spectrum Scale
 customJson="/usr/lpp/mmfs/lib/mmsysmon/custom.json"
+
+# mmsysmonc command
+SYSMON_CMD="/usr/lpp/mmfs/bin/mmsysmonc"
 
 # path and file name of the admin command line tool for EE
 EE_ADM_CMD="/opt/ibm/ltfsee/bin/eeadm"
@@ -128,22 +134,20 @@ NODENAME=$(/usr/lpp/mmfs/bin/mmlsnode -N localhost)
 # default threshold that throws a WARMING for pool low space
 DEFAULT_LOW_SPACE_THRESHOLD=10
 
-# define node states
-NODE_WARNING_STATES=(down)
-NODE_ERROR_STATES=(error)
-NODE_GOOD_STATES=(available)
+# define node status
+NODE_WARNING_STATUS=(disabled)
+NODE_ERROR_STATUS=(error)
+NODE_GOOD_STATUS=(available)
 
-# define tape states
-TAPE_WARNING_STATES=(append_fenced data_full exported offline recall_only need_replace require_replace check_tape_library require_validate check_key_server)
-TAPE_ERROR_STATES=(check_hba inaccessible non_supported duplicated missing disconnected unformatted label_mismatch need_unlock)
-TAPE_GOOD_STATES=(appendable unassigned full)
+# define tape status
+TAPE_WARNING_STATUS=(info degraded warning)
+TAPE_ERROR_STATUS=(error)
+TAPE_GOOD_STATUS=(ok)
 
-# define drive states
-DRIVE_WARNING_STATES=(disconnected unassigned not_installed)
-DRIVE_ERROR_STATES=(error standby)
-DRIVE_GOOD_STATES=(in_use locked mounted mounting not_mounted unmounting)
-
-
+# define drive status
+DRIVE_WARNING_STATUS=(info)
+DRIVE_ERROR_STATUS=(error)
+DRIVE_GOOD_STATUS=(ok)
 
 
 ################################################################################
@@ -286,7 +290,7 @@ function check_status()
       out=$($EE_ADM_CMD node list --json |  $JQ_TOOL -r '.payload[] | [.id, .state, .hostname, .enabled, .control_node, .active_control_node] | @csv' 2>&1)
       rc=$?
     else
-      # used for degugging different states
+      # used for debugging different states
       out=$(cat ./node_test.json |  $JQ_TOOL -r '.payload[] | [.id, .state, .hostname, .enabled, .control_node, .active_control_node] | @csv' 2>&1)
       rc=$?
       # echo "DEBUG: $out"
@@ -350,22 +354,24 @@ function check_status()
 ## Check IBM Spectrum Archive EE node state
 ##
 ## Verify node state for all nodes
+##
+## Note, does not yet have status field, so we look at the state
 ################################################################################
-## Sample output - this is what we're going to parse
-# eeadm node list -- json
-#{ "id": 1,
-#  "ip": "9.155.113.43",
-#  "hostname": "ltfsee-2",
+# sample 1.3.0.6
+#{
+#  "id": 2,
+#  "ip": "9.155.113.41",
+#  "hostname": "ltfsee-1",
 #  "port": 7600,
 #  "enabled": true,
 #  "num_of_drives": 2,
-#  "library_id": "000001302300_LLC",
-#  "library_name": "eelib2",
-#  "nodegroup_id": "G0@000001302300_LLC",
+#  "library_id": "0000013100730409",
+#  "library_name": "eelib1",
+#  "nodegroup_id": "G0@0000013100730409",
 #  "nodegroup_name": "G0",
 #  "state": "available",
 #  "control_node": true,
-#  "active_control_node": true }
+#  "active_control_node": true},
 function check_nodes
 {
   msg=""
@@ -382,7 +388,7 @@ function check_nodes
     out=$($EE_ADM_CMD node list --json |  $JQ_TOOL -r '.payload[] | [.id, .state, .hostname, .enabled, .control_node, .active_control_node] | @csv' 2>&1)
     rc=$?
   else
-    # used for degugging different states
+    # used for debugging different states
     out=$(cat ./node_test.json |  $JQ_TOOL -r '.payload[] | [.id, .state, .hostname, .enabled, .control_node, .active_control_node] | @csv' 2>&1)
     rc=$?
     # echo "DEBUG: $out"
@@ -397,16 +403,16 @@ function check_nodes
       state4=$(echo $line | cut -d',' -f5)					# control node ?
       state5=$(echo $line | cut -d',' -f6)					# active control node ?
 
-      if ( in_array $state1 "${NODE_ERROR_STATES[*]}" ) ; then
-        msg="ERROR: Node ID $id ($state2) is in state: $state1 (control node = $state4 - enabled = $state3); "$msg
+      if ( in_array $state1 "${NODE_ERROR_STATUS[*]}" ) ; then
+        msg="ERROR: Node ID $id ($state2) is in status=$state1 (control node=$state4, enabled=$state3); "$msg
         exitrc=2
-      elif ( in_array $state1 "${NODE_WARNING_STATES[*]}" ) ; then
-        msg=$msg"WARNING: Node ID $id ($state2) is in state: $state1 (control node = $state4 - enabled = $state3); "
+      elif ( in_array $state1 "${NODE_WARNING_STATUS[*]}" ) ; then
+        msg=$msg"WARNING: Node ID $id ($state2) is in status=$state1 (control node=$state4, enabled=$state3); "
         if (( $exitrc < 2 )) ; then
           exitrc=1
         fi
-      elif ( ! in_array $state1 "${NODE_GOOD_STATES[*]}" ) ; then
-        msg=$msg"WARNING: Unknow node state: $state1 detected for node $id ($state2 - control node = $state4, enabled = $state3); "
+      elif ( ! in_array $state1 "${NODE_GOOD_STATUS[*]}" ) ; then
+        msg=$msg"WARNING: Unknown node status=$state1 detected for node ID $id (node name=$state2, control node=$state4, enabled=$state3); "
         if (( $exitrc < 2 )) ; then
           exitrc=1
         fi
@@ -430,7 +436,7 @@ function check_nodes
 ##
 ## Check IBM Spectrum Archive EE tape state
 ##
-## Verify tape state for all tapes
+## Verify status for all tapes
 ################################################################################
 ## Sample output - this is what we're going to parse
 # eeadm tape list --json
@@ -459,6 +465,7 @@ function check_nodes
 #  "task_id": "",
 #  "offline_msg": "",
 #  "location_type": "drive" }
+#
 function check_tapes
 {
   msg=""
@@ -468,14 +475,15 @@ function check_tapes
   state2=""
   state3=""
   state4=""
+  state5=""
   exitrc=0
 
   if (( $DEBUG == 0 )) ; then
-    out=$($EE_ADM_CMD tape list --json |  $JQ_TOOL -r '.payload[] | [.barcode, .state, .pool_name, .library_name, .location_type] | @csv' 2>&1)
+    out=$($EE_ADM_CMD tape list --json |  $JQ_TOOL -r '.payload[] | [.barcode, .state, .pool_name, .library_name, .location_type, .status] | @csv' 2>&1)
     rc=$?
   else
-    # used for degugging different states
-    out=$(cat ./tape_test.json |  $JQ_TOOL -r '.payload[] | [.barcode, .state, .pool_name, .library_name, .location_type] | @csv' 2>&1)
+    # used for debugging different states
+    out=$(cat ./tape_test.json |  $JQ_TOOL -r '.payload[] | [.barcode, .state, .pool_name, .library_name, .location_type, .status] | @csv' 2>&1)
     rc=$?
     # echo "DEBUG: rc=$rc, out=$out"
   fi
@@ -487,17 +495,18 @@ function check_tapes
       state2=$(echo $line | cut -d',' -f3  | cut -d'"' -f2)	# pool_name
       state3=$(echo $line | cut -d',' -f4  | cut -d'"' -f2)	# library_name
       state4=$(echo $line | cut -d',' -f5  | cut -d'"' -f2)	# location_type
+	  state5=$(echo $line | cut -d',' -f6  | cut -d'"' -f2)	# status
 
-      if ( in_array $state1 "${TAPE_ERROR_STATES[*]}" ) ; then
+      if ( in_array $state5 "${TAPE_ERROR_STATUS[*]}" ) ; then
         msg="ERROR: Tape $id is in state: $state1 (pool=$state2 - library=$state3, location=$state4); "$msg
         exitrc=2
-      elif ( in_array $state1 "${TAPE_WARNING_STATES[*]}" ) ; then
+      elif ( in_array $state5 "${TAPE_WARNING_STATUS[*]}" ) ; then
         msg=$msg"WARNING: Tape $id is in state: $state1 (pool=$state2 - library=$state3 - location=$state4); "
         if (( $exitrc < 2 )) ; then
           exitrc=1
         fi
-      elif ( ! in_array $state1 "${TAPE_GOOD_STATES[*]}" ) ; then
-        msg=$msg"WARNING: Unknow tape state: $state1 detected for tape $id (pool=$state2 - library=$state3 - location=$state4); "
+      elif ( ! in_array $state5 "${TAPE_GOOD_STATUS[*]}" ) ; then
+        msg=$msg"WARNING: Unknow tape status=$state5, state=$state1 detected for tape $id (pool=$state2 - library=$state3 - location=$state4); "
         if (( $exitrc < 2 )) ; then
           exitrc=1
         fi
@@ -521,22 +530,30 @@ function check_tapes
 ##
 ## Check IBM Spectrum Archive EE drive state
 ##
-## Verify drive state for all drives
+## Verify status for all drives
+##
 ################################################################################
-## Sample output - this is what we're going to parse
-# eeadm drive list --json
-#{ "id": "1068002839",
-#  "state": "not_mounted",
-#  "type": "LTO6",
-#  "role": "mrg",
-#  "library_id": "000001302300_LLC",
-#  "library_name": "eelib2",
-#  "address": 256,
-#  "node_id": 1,
-#  "node_hostname": "ltfsee-2",
-#  "tape_barcode": "",
-#  "nodegroup_name": "G0",
-#  "task_id": "" }
+# Sample output 1.3.0.6
+#{
+# "id": "00078B1153",
+#      "status": "ok",
+#      "state": "mounted",
+#      "type": "LTO6",
+#      "role": "mrg",
+#      "library_id": "0000013100730409",
+#      "library_name": "eelib1",
+#      "address": 257,
+#      "node_id": 2,
+#      "node_hostname": "ltfsee-1",
+#      "tape_barcode": "SLE033L6",
+#      "nodegroup_name": "G0",
+#      "task_id": "",
+#      "scsi_vendor_id": "IBM",
+#      "scsi_product_id": "ULT3580-TD6",
+#      "scsi_firmware_revision": "JAX0",
+#      "host_scsi_address": "4.0.0.0",
+#      "host_device_name": "/dev/sg1"
+# },
 function check_drives
 {
   msg=""
@@ -546,14 +563,15 @@ function check_drives
   state2=""
   state3=""
   state4=""
+  state5=""
   exitrc=0
 
   if (( $DEBUG == 0 )) ; then
-    out=$($EE_ADM_CMD drive list --json |  $JQ_TOOL -r '.payload[] | [.id, .state, .type, .library_name, .node_hostname] | @csv' 2>&1)
+    out=$($EE_ADM_CMD drive list --json |  $JQ_TOOL -r '.payload[] | [.id, .state, .type, .library_name, .node_hostname, .status] | @csv' 2>&1)
     rc=$?
   else
-    # used for degugging different states
-    out=$(cat ./drive_test.json | $JQ_TOOL -r '.payload[] | [.id, .state, .type, .library_name, .node_hostname] | @csv' )
+    # used for debugging different states
+    out=$(cat ./drive_test.json | $JQ_TOOL -r '.payload[] | [.id, .state, .type, .library_name, .node_hostname, .status] | @csv' )
     rc=$?
     # echo "DEBUG: rc=$rc, out=$out"
   fi
@@ -565,21 +583,23 @@ function check_drives
       state2=$(echo $line | cut -d',' -f3  | cut -d'"' -f2)	# drive type
       state3=$(echo $line | cut -d',' -f4  | cut -d'"' -f2)	# library name
       state4=$(echo $line | cut -d',' -f5  | cut -d'"' -f2)	# hostname
+	  state5=$(echo $line | cut -d',' -f6  | cut -d'"' -f2) # status
 
-      if ( in_array $state1 "${DRIVE_ERROR_STATES[*]}" ) ; then
-        msg="ERROR: drive $id ($state2) is in state: $state1 (library=$state3 - node=$state4); "$msg
+      if ( in_array $state5 "${DRIVE_ERROR_STATUS[*]}" ) ; then
+        msg="ERROR: drive $id is in state: $state1 (type=$state2, library=$state3 - node=$state4); "$msg
         exitrc=2
-      elif ( in_array $state1 "${DRIVE_WARNING_STATES[*]}" ) ; then
-        msg=$msg"WARNING: drive $id ($state2) is in state: $state1 (library=$state3 - node=$state4); "
+      elif ( in_array $state5 "${DRIVE_WARNING_STATUS[*]}" ) ; then
+        msg=$msg"WARNING: drive $id is in state: $state1 (type=$state2, library=$state3, node=$state4); "
         if (( $exitrc < 2 )) ; then
           exitrc=1
         fi
-      elif ( ! in_array $state1 "${DRIVE_GOOD_STATES[*]}" ) ; then
-        msg=$msg"WARNING: Unknown state: $state1 detected for drive $id (type=$state2 - library=$state3, node=$state4); "
+      elif ( ! in_array $state5 "${DRIVE_GOOD_STATUS[*]}" ) ; then
+        msg=$msg"WARNING: Unknown status=$state5 with state=$state1 detected for drive $id (type=$state2 - library=$state3, node=$state4); "
         if (( $exitrc < 2 )) ; then
           exitrc=1
         fi
       fi
+
     done <<< "$(echo -e "$out")"
   else
     msg="ERROR: drive status not detected. EE may be down or no drives are configured!"
@@ -775,7 +795,7 @@ function check_tasks
 	out=$($EE_ADM_CMD task list $tt)
     rc=$?
   else
-    # used for degugging different states
+    # used for debugging different states
     # out=$(cat ./task_test.json | $JQ_TOOL -r '.payload[] | [.task_id, .type, .status, .result] | @csv' 2>&1)
 	out=$(cat ./task_test)
     rc=$?
@@ -897,10 +917,10 @@ case "$opt" in
 	  then
 	    if (( $tmprc == 1 )); 
         then
-          mmsysmonc event custom $eventWarn $func,"$msg"
+          $SYSMON_CMD event custom $eventWarn $func,"$msg"
         elif (( $tmprc == 2 ));
         then			
-          mmsysmonc event custom $eventErr $func,"$msg"
+          $SYSMON_CMD event custom $eventErr $func,"$msg"
         fi
       fi		
     done
@@ -915,7 +935,7 @@ echo -e "$msg"
 # echo "DEBUG: opt="$1", eventEnabled=$eventEnabled, finalrc=$finalrc"
 if [[ $1 == "-e" && $eventEnabled == "1" && $finalrc == "0" ]];
 then
-  mmsysmonc event custom $eventGood "check_all EE components","No problem found"
+  $SYSMON_CMD event custom $eventGood "check_all EE components","No problem found"
 fi
 exit $finalrc
 
