@@ -1,34 +1,34 @@
 {        
-        "checkEE_info":{
+        "ltfs_info":{
                "cause":"Check Spectrum Archive ended successful.",
                "user_action":"None",
                "entity_type":"NODE",
                "scope":"NODE",
-               "code":"888341",
+               "code":"ee_001",
                "description":"Check Spectrum Archive ended successful.",
                "event_type":"INFO",
                "message":"Component {0} ended successful, message: {1}",
                "severity":"INFO"
         },
 
-        "checkEE_warning":{
+        "ltfs_warning":{
                "cause":"Check Spectrum Archive ended with Warnings.",
                "user_action":"Check the message details.",
                "entity_type":"NODE",
                "scope":"NODE",
-               "code":"888342",
+               "code":"ee_002",
                "description":"Check of a Spectrum Archive ended with Warnings.",
                "event_type":"INFO",
                "message":"Component {0} determined Warnings, message: {1}.",
                "severity":"WARNING"
         },
 
-        "checkEE_error":{
+        "ltfs_error":{
                "cause":"Check Spectrum Archive ended with Errors",
                "user_action":"Check the message details.",
                "entity_type":"NODE",
                "scope":"NODE",
-               "code":"888343",
+               "code":"ee_003",
                "description":"Check of a Spectrum Archive ended with Errors.",
                "event_type":"INFO",
                "message":"Component {0} determined Errors, message: {1}.",
