@@ -33,16 +33,14 @@
 # Contributor:	Achim Christ - achim(dot)christ(at)gmail(dot)com
 # Contributor:	Jan-Frode Myklebust - janfrode(at)tanso(dot)net
 #
-# Version:	1.3.5
+# Version:	1.4
 #
 # Dependencies:	
 #   - IBM Spectrum Archive EE running on Spectrum Scale
-#   - jq: json parser (https://stedolan.github.io/jq/)
-#         EPEL:  https://centos.pkgs.org/7/epel-x86_64/jq-1.5-1.el7.x86_64.rpm.html
-#         ppc64: http://ftp.us2.freshrpms.net/linux/RPM/epel/7/ppc64/Packages/j/jq-devel-1.5-1.el7.ppc64.html
+#   - jq, available with RHEL base repo (alternatively at https://stedolan.github.io/jq/)
 #
 # Github Repository: 
-# https://github.com/nhaustein/check_spectrumarchive
+# https://github.com/IBM/check_spectrumarchive
 #
 #
 ################################################################################
@@ -53,7 +51,8 @@
 # 
 # The code uses eeadm commands with the --json parameter to generate the output
 # in JSON format. In order to parse the json format the jq tool is required. 
-# Download jq here: (https://stedolan.github.io/jq/) and place it in /usr/bin.
+# Install jq (dnf install jq) or download it here: (https://stedolan.github.io/jq/)
+# and place it in /usr/bin.
 # Example: jq -r '.payload[] | [.id, .state] | @csv' node.json
 
 # The actual code is managed in the following Git rebository - please use the
@@ -88,6 +87,7 @@
 # 03/05/20 version 1.3.5 correct echo syntax error, use complete path for mmsysmonc ($SYSMON_CMD)
 # 03/13/20 version 1.3.5 change event code and labels for GUI events (upper case labels won't work)
 # 03/13/20 version 1.3.5 check status for tape and drive instead of states
+# 06/16/26 version 1.3.6 determine the path where jq is installed and assign it to $JQ_TOOL
 ################################################################################
 ## Future topics
 ################################################################################
@@ -123,8 +123,12 @@ SYSMON_CMD="/usr/lpp/mmfs/bin/mmsysmonc"
 # path and file name of the admin command line tool for EE
 EE_ADM_CMD="/opt/ibm/ltfsee/bin/eeadm"
 
-# specify the path to the jq tool
-JQ_TOOL="/usr/local/bin/jq"
+# specify the path to the jq tool in DEF_JQ_TOOL, if jq is not in PATH
+DEF_JQ_TOOL="/usr/local/bin/jq"
+JQ_TOOL=$(which jq 2>> /dev/null)
+if [[ -z $JQ_TOOL ]]; then
+  JQ_TOOL=$DEF_JQ_TOOL
+fi
 
 # get hostname
 HOSTNAME=$(hostname | sed "s/\..*$//" )
@@ -842,7 +846,7 @@ if [ ! -f $EE_ADM_CMD ] ; then
   exit 2
 fi
 if [ ! -f $JQ_TOOL ] ; then
-  echo "ERROR: utility jq not found, please download and install it in $JQ_TOOL (https://stedolan.github.io/jq/)"
+  echo "ERROR: utility jq not found, please install it (dnf install jq or download from https://stedolan.github.io/jq/)"
   exit 2
 fi
 
