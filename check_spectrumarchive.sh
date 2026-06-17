@@ -100,7 +100,7 @@
 ## Variable definition
 ################################################################################
 # define the version number
-ver=1.3.5
+ver=1.3.6
 
 # debug option: if this 1 then the json output is parsed from a file (e.g. ./node_test.json)
 DEBUG=0
